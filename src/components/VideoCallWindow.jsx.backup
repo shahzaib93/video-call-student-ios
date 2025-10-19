@@ -1,0 +1,1067 @@
+import React, { useState, useRef, useEffect } from 'react';
+import WhiteboardCanvas from './WhiteboardCanvas';
+import {
+  Box,
+  IconButton,
+  Typography,
+  Paper,
+  Chip,
+  alpha,
+  TextField,
+  Divider,
+  Slide,
+  Popover,
+  Badge,
+  useTheme,
+  useMediaQuery,
+  Drawer,
+  Fab,
+} from '@mui/material';
+import {
+  CallEnd as CallEndIcon,
+  Mic as MicIcon,
+  MicOff as MicOffIcon,
+  Videocam as VideocamIcon,
+  VideocamOff as VideocamOffIcon,
+  VolumeUp as VolumeUpIcon,
+  VolumeDown as VolumeDownIcon,
+  ScreenShare as ScreenShareIcon,
+  StopScreenShare as StopScreenShareIcon,
+  Draw as WhiteboardIcon,
+  PanTool as RaiseHandIcon,
+  Chat as ChatIcon,
+  Send as SendIcon,
+  EmojiEmotions as EmojiIcon,
+  Close as CloseIcon,
+  Menu as MenuIcon,
+  MoreVert as MoreVertIcon,
+} from '@mui/icons-material';
+
+function VideoCallWindow({ 
+  isOpen = false, 
+  callData, 
+  callStatus = 'connecting', 
+  onEndCall,
+  webrtcService,
+  socketManager 
+}) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteVolume, setRemoteVolume] = useState(0.7);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [showControlDrawer, setShowControlDrawer] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [isHandRaised, setIsHandRaised] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [emojiAnchorEl, setEmojiAnchorEl] = useState(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const chatContainerRef = useRef(null);
+  
+  // Responsive video states
+  const [remoteVideoAspectRatio, setRemoteVideoAspectRatio] = useState(16/9);
+  const [isRemotePortrait, setIsRemotePortrait] = useState(false);
+
+  useEffect(() => {
+    if (!webrtcService) return;
+
+    const status = webrtcService.getStatus();
+    
+    if (status.hasLocalStream) {
+      setLocalStream(webrtcService.localStream);
+    }
+    
+    if (status.hasRemoteStream) {
+      setRemoteStream(webrtcService.remoteStream);
+    }
+
+    const handleRemoteStream = (event) => {
+      setRemoteStream(event.detail.stream);
+    };
+
+    webrtcService.addEventListener('remote-stream', handleRemoteStream);
+    
+    // Check for remote stream periodically (in case we missed the initial event)
+    const checkRemoteStream = setInterval(() => {
+      const currentStatus = webrtcService.getStatus();
+      if (currentStatus.hasRemoteStream && !remoteStream) {
+        setRemoteStream(webrtcService.remoteStream);
+      }
+    }, 1000);
+    
+    return () => {
+      webrtcService.removeEventListener('remote-stream', handleRemoteStream);
+      clearInterval(checkRemoteStream);
+    };
+  }, [webrtcService, remoteStream]);
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      
+      // Set volume to prevent audio feedback
+      remoteVideoRef.current.volume = remoteVolume;
+      
+      // Ensure video plays and detect aspect ratio
+      remoteVideoRef.current.addEventListener('loadedmetadata', () => {
+        const video = remoteVideoRef.current;
+        if (video) {
+          const aspectRatio = video.videoWidth / video.videoHeight;
+          const isPortrait = aspectRatio < 1;
+          
+            width: video.videoWidth,
+            height: video.videoHeight,
+            aspectRatio: aspectRatio.toFixed(2),
+            isPortrait
+          });
+          
+          setRemoteVideoAspectRatio(aspectRatio);
+          setIsRemotePortrait(isPortrait);
+        }
+        
+        remoteVideoRef.current.play().catch(e => {
+        });
+      });
+    }
+  }, [remoteStream]);
+
+  const handleToggleAudio = () => {
+    if (webrtcService) {
+      const enabled = webrtcService.toggleAudio();
+      setIsAudioEnabled(enabled);
+    }
+  };
+
+  const handleToggleVideo = () => {
+    if (webrtcService) {
+      const enabled = webrtcService.toggleVideo();
+      setIsVideoEnabled(enabled);
+    }
+  };
+
+  const handleVolumeUp = () => {
+    const newVolume = Math.min(remoteVolume + 0.1, 1.0);
+    setRemoteVolume(newVolume);
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.volume = newVolume;
+    }
+  };
+
+  const handleVolumeDown = () => {
+    const newVolume = Math.max(remoteVolume - 0.1, 0.0);
+    setRemoteVolume(newVolume);
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.volume = newVolume;
+    }
+  };
+
+  const handleToggleScreenShare = async () => {
+    try {
+      if (!webrtcService) {
+        throw new Error('WebRTC service not available');
+      }
+
+      if (isScreenSharing) {
+        await webrtcService.stopScreenShare();
+        setIsScreenSharing(false);
+      } else {
+        await webrtcService.startScreenShare();
+        setIsScreenSharing(true);
+      }
+    } catch (error) {
+      console.error('❌ Student: Screen share toggle failed:', error);
+      alert('Screen sharing failed: ' + error.message);
+    }
+  };
+
+  // Listen for screen share events
+  useEffect(() => {
+    if (!webrtcService) return;
+
+    const handleScreenShareStarted = () => setIsScreenSharing(true);
+    const handleScreenShareStopped = () => setIsScreenSharing(false);
+
+    webrtcService.addEventListener('screen-share-started', handleScreenShareStarted);
+    webrtcService.addEventListener('screen-share-stopped', handleScreenShareStopped);
+
+    return () => {
+      webrtcService.removeEventListener('screen-share-started', handleScreenShareStarted);
+      webrtcService.removeEventListener('screen-share-stopped', handleScreenShareStopped);
+    };
+  }, [webrtcService]);
+
+  // Listen for hand acknowledgment from teacher
+  useEffect(() => {
+    if (!socketManager?.socket) return;
+
+    const handleHandAcknowledged = (data) => {
+      if (data.studentId === socketManager.socket.userData?.userId) {
+        setIsHandRaised(false);
+      }
+    };
+
+    const handleChatMessage = (messageData) => {
+      
+      // Prevent duplicate messages (don't add if it's from ourselves)
+      if (messageData.senderId === socketManager.socket.userData?.userId) {
+        return;
+      }
+      
+      setChatMessages(prev => {
+        const newMessage = {
+          id: Date.now() + Math.random(),
+          message: messageData.message,
+          sender: messageData.senderName || 'Teacher',
+          senderId: messageData.senderId,
+          timestamp: new Date(),
+          isOwnMessage: false
+        };
+        return [...prev, newMessage];
+      });
+
+      // Increment unread count if chat is not visible
+      if (!showChat) {
+        setUnreadMessages(prev => prev + 1);
+      }
+    };
+
+    socketManager.socket.on('hand-acknowledged', handleHandAcknowledged);
+    socketManager.socket.on('call-chat-message', handleChatMessage);
+
+    return () => {
+      socketManager.socket.off('hand-acknowledged', handleHandAcknowledged);
+      socketManager.socket.off('call-chat-message', handleChatMessage);
+    };
+  }, [socketManager]);
+
+  const handleToggleChat = () => {
+    setShowChat(!showChat);
+    if (!showChat) {
+      // Reset unread count when opening chat
+      setUnreadMessages(0);
+    }
+  };
+
+  const handleSendMessage = () => {
+    
+    if (!newMessage.trim()) {
+      return;
+    }
+    
+    if (!socketManager?.socket) {
+      console.error('❌ Student: Socket manager or socket not available');
+      alert('Unable to send message: Connection not available. Please check your internet connection.');
+      return;
+    }
+
+    if (!socketManager.socket.connected) {
+      console.error('❌ Student: Socket not connected');
+      alert('Unable to send message: Not connected to server. Please try again.');
+      return;
+    }
+
+      connected: socketManager.socket.connected,
+      userData: socketManager.socket.userData,
+      callId: callData?.callId
+    });
+
+    const messageData = {
+      callId: callData?.callId || 'unknown',
+      message: newMessage.trim(),
+      senderId: socketManager.socket.userData?.userId || 'student',
+      senderName: socketManager.socket.userData?.username || 'Student',
+      timestamp: new Date().toISOString()
+    };
+
+
+    try {
+      // Add message to local state first
+      setChatMessages(prev => [...prev, {
+        id: Date.now() + Math.random(),
+        message: messageData.message,
+        sender: 'You',
+        senderId: messageData.senderId,
+        timestamp: new Date(),
+        isOwnMessage: true
+      }]);
+
+      // Send to other participants
+      socketManager.socket.emit('call-chat-message', messageData, (acknowledgment) => {
+        if (acknowledgment && acknowledgment.error) {
+          console.error('❌ Student: Message send failed:', acknowledgment.error);
+          alert('Failed to send message. Please try again.');
+        } else {
+        }
+      });
+      
+      setNewMessage('');
+    } catch (error) {
+      console.error('❌ Student: Error sending message:', error);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Emoji functions
+  const handleEmojiClick = (event) => {
+    setEmojiAnchorEl(event.currentTarget);
+  };
+
+  const handleEmojiClose = () => {
+    setEmojiAnchorEl(null);
+  };
+
+  const addEmoji = (emoji) => {
+    setNewMessage(prev => prev + emoji);
+    setEmojiAnchorEl(null);
+  };
+
+  const commonEmojis = [
+    '😀', '😂', '🥰', '😍', '🤔', '👍', '👎', '❤️', '🎉', '🎊',
+    '😊', '😎', '🙄', '😢', '😭', '😡', '🤗', '🤷', '🙏', '👏',
+    '🔥', '⭐', '✅', '❌', '💯', '🎯', '📝', '💡', '🚀', '🎈'
+  ];
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  const handleToggleWhiteboard = () => {
+    setShowWhiteboard(!showWhiteboard);
+  };
+
+  const handleRaiseHand = () => {
+    if (!socketManager?.socket) {
+      console.error('✋ Student: Socket manager or socket not available');
+      alert('Unable to raise hand: Connection not available. Please check your internet connection.');
+      return;
+    }
+
+    if (!socketManager.socket.connected) {
+      console.error('✋ Student: Socket not connected');
+      alert('Unable to raise hand: Not connected to server. Please try again.');
+      return;
+    }
+
+    const newHandState = !isHandRaised;
+    setIsHandRaised(newHandState);
+    
+    const handData = {
+      callId: callData?.callId || 'unknown',
+      studentId: socketManager.socket.userData?.userId || 'student',
+      studentName: socketManager.socket.userData?.username || 'Student',
+      isRaised: newHandState,
+      timestamp: Date.now()
+    };
+    
+      connected: socketManager.socket.connected,
+      userData: socketManager.socket.userData,
+      callId: callData?.callId
+    });
+    
+    
+    try {
+      socketManager.socket.emit('student-raise-hand', handData, (acknowledgment) => {
+        if (acknowledgment && acknowledgment.error) {
+          console.error('✋ Student: Hand raise failed:', acknowledgment.error);
+          alert('Failed to raise hand. Please try again.');
+          setIsHandRaised(!newHandState); // Revert state
+        } else {
+        }
+      });
+      
+    } catch (error) {
+      console.error('✋ Student: Error raising hand:', error);
+      setIsHandRaised(!newHandState); // Revert state
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: '#000',
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'row',
+      }}
+    >
+      {/* Main Video Call Area */}
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+        }}
+      >
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 52, // Increased to account for title bar (32px height + 20px margin)
+          left: 20,
+          zIndex: 10000,
+        }}
+      >
+        <Chip
+          label={`Status: ${callStatus}`}
+          color={callStatus === 'connected' ? 'success' : 'warning'}
+          size="small"
+        />
+      </Box>
+
+      <Box
+        sx={{
+          flex: 1,
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          // Responsive container for mobile teacher calls
+          padding: isRemotePortrait ? { xs: 2, sm: 4, md: 6 } : 0,
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            width: isRemotePortrait ? {
+              xs: '80%',  // Smaller on mobile for portrait calls
+              sm: '60%',  // Medium on tablet
+              md: '50%'   // Smaller on desktop for portrait calls
+            } : '100%',
+            height: isRemotePortrait ? 'auto' : '100%',
+            aspectRatio: isRemotePortrait ? `${remoteVideoAspectRatio}` : 'auto',
+            maxHeight: '100%',
+            backgroundColor: '#222',
+            borderRadius: isRemotePortrait ? 3 : 0,
+            overflow: 'hidden',
+            boxShadow: isRemotePortrait ? '0 8px 32px rgba(0, 0, 0, 0.5)' : 'none',
+          }}
+        >
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain', // Changed from 'cover' to 'contain' for better mobile aspect ratios
+              backgroundColor: '#222',
+            }}
+          />
+        </Box>
+
+        {!remoteStream && (
+          <Box
+            sx={{
+              position: 'absolute',
+              color: 'white',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="h6">
+              {callStatus === 'connecting' ? 'Connecting to teacher...' : 'Waiting for video'}
+            </Typography>
+            <Typography variant="body2" color="grey.400">
+              {callStatus === 'connecting' ? 'Please wait while we establish the connection' : 'Establishing connection'}
+            </Typography>
+          </Box>
+        )}
+
+        <Paper
+          sx={{
+            position: 'absolute',
+            // Responsive positioning based on remote video orientation
+            bottom: isRemotePortrait ? { xs: 20, md: 30 } : 20,
+            right: isRemotePortrait ? { xs: 10, md: 20 } : 20,
+            // Adaptive sizing for mobile teacher calls
+            width: isRemotePortrait ? 
+              { xs: 100, sm: 120, md: 140 } : // Smaller when remote is portrait
+              { xs: 120, sm: 160, md: 200 },  // Normal when remote is landscape
+            height: isRemotePortrait ? 
+              { xs: 130, sm: 160, md: 180 } : // Taller when remote is portrait
+              { xs: 90, sm: 120, md: 150 },   // Normal when remote is landscape
+            backgroundColor: '#333',
+            overflow: 'hidden',
+            borderRadius: 2,
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            // Enhanced visibility for mobile calls
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain', // Changed to 'contain' for better aspect ratio handling
+            }}
+          />
+          
+          {!isVideoEnabled && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <VideocamOffIcon sx={{ color: 'white', fontSize: 40 }} />
+            </Box>
+          )}
+        </Paper>
+      </Box>
+
+      <Box
+        sx={{
+          position: 'absolute',
+          // Responsive positioning for mobile teacher calls
+          bottom: { xs: 15, sm: 25, md: 30 },
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: { xs: 1, sm: 1.5, md: 2 }, // Smaller gaps on mobile
+          zIndex: 10000,
+          // Better wrapping for mobile
+          flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          justifyContent: 'center',
+          maxWidth: { xs: '90vw', sm: 'none' },
+        }}
+      >
+        <IconButton
+          onClick={handleToggleAudio}
+          sx={{
+            backgroundColor: isAudioEnabled 
+              ? 'rgba(255, 255, 255, 0.9)' 
+              : '#f44336',
+            backdropFilter: 'blur(10px)',
+            color: isAudioEnabled ? theme.palette.primary.main : 'white',
+            border: isAudioEnabled ? `2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`` : '2px solid #f44336',
+            boxShadow: isAudioEnabled 
+              ? `0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`` 
+              : '0 4px 12px rgba(244, 67, 54, 0.3)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: isAudioEnabled ? theme.palette.primary.main : '#d32f2f',
+              color: 'white',
+              boxShadow: isAudioEnabled 
+                ? `0 6px 16px ${alpha(theme.palette.primary.main, 0.4)}` 
+                : '0 6px 16px rgba(244, 67, 54, 0.4)',
+            },
+          }}
+        >
+          {isAudioEnabled ? <MicIcon /> : <MicOffIcon />}
+        </IconButton>
+
+        <IconButton
+          onClick={handleToggleVideo}
+          sx={{
+            backgroundColor: isVideoEnabled 
+              ? 'rgba(255, 255, 255, 0.9)' 
+              : '#f44336',
+            backdropFilter: 'blur(10px)',
+            color: isVideoEnabled ? theme.palette.primary.main : 'white',
+            border: isVideoEnabled ? '2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`' : '2px solid #f44336',
+            boxShadow: isVideoEnabled 
+              ? '0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`' 
+              : '0 4px 12px rgba(244, 67, 54, 0.3)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: isVideoEnabled ? theme.palette.primary.main : '#d32f2f',
+              color: 'white',
+              boxShadow: isVideoEnabled 
+                ? '0 6px 16px rgba(143, 163, 30, 0.4)' 
+                : '0 6px 16px rgba(244, 67, 54, 0.4)',
+            },
+          }}
+        >
+          {isVideoEnabled ? <VideocamIcon /> : <VideocamOffIcon />}
+        </IconButton>
+
+        <IconButton
+          onClick={handleToggleScreenShare}
+          sx={{
+            backgroundColor: isScreenSharing 
+              ? theme.palette.primary.main 
+              : 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            color: isScreenSharing ? 'white' : theme.palette.primary.main,
+            border: '2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            boxShadow: '0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              boxShadow: '0 6px 16px rgba(143, 163, 30, 0.4)',
+            },
+          }}
+        >
+          {isScreenSharing ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+        </IconButton>
+
+        <IconButton
+          onClick={handleVolumeDown}
+          sx={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            color: theme.palette.primary.main,
+            border: '2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            boxShadow: '0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              boxShadow: '0 6px 16px rgba(143, 163, 30, 0.4)',
+            },
+          }}
+        >
+          <VolumeDownIcon />
+        </IconButton>
+
+        <IconButton
+          onClick={handleVolumeUp}
+          sx={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            color: theme.palette.primary.main,
+            border: '2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            boxShadow: '0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              boxShadow: '0 6px 16px rgba(143, 163, 30, 0.4)',
+            },
+          }}
+        >
+          <VolumeUpIcon />
+        </IconButton>
+
+        <IconButton
+          onClick={handleToggleWhiteboard}
+          sx={{
+            backgroundColor: showWhiteboard 
+              ? theme.palette.primary.main 
+              : 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            color: showWhiteboard ? 'white' : theme.palette.primary.main,
+            border: '2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            boxShadow: '0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: theme.palette.primary.main,
+              color: 'white',
+              boxShadow: '0 6px 16px rgba(143, 163, 30, 0.4)',
+            },
+          }}
+        >
+          <WhiteboardIcon />
+        </IconButton>
+
+        <IconButton
+          onClick={handleRaiseHand}
+          sx={{
+            backgroundColor: isHandRaised 
+              ? '#ff9800' 
+              : 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            color: isHandRaised ? 'white' : '#ff9800',
+            border: '2px solid rgba(255, 152, 0, 0.3)',
+            boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: '#ff9800',
+              color: 'white',
+              boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)',
+            },
+          }}
+        >
+          <RaiseHandIcon />
+        </IconButton>
+
+        <Badge 
+          badgeContent={unreadMessages} 
+          color="error"
+          sx={{
+            display: 'inline-flex',
+            '& .MuiBadge-badge': {
+              backgroundColor: '#ff4444',
+              color: 'white',
+              fontWeight: 'bold',
+              minWidth: '18px',
+              height: '18px',
+              fontSize: '11px',
+            }
+          }}
+        >
+          <IconButton
+            onClick={handleToggleChat}
+            sx={{
+              backgroundColor: showChat 
+                ? theme.palette.primary.main 
+                : 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: showChat ? 'white' : theme.palette.primary.main,
+              border: '2px solid `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+              boxShadow: '0 4px 12px `2px solid ${alpha(theme.palette.primary.main, 0.3)}`',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                backgroundColor: theme.palette.primary.main,
+                color: 'white',
+                boxShadow: '0 6px 16px rgba(143, 163, 30, 0.4)',
+              },
+            }}
+          >
+            <ChatIcon />
+          </IconButton>
+        </Badge>
+
+        <IconButton
+          onClick={onEndCall}
+          sx={{
+            backgroundColor: '#f44336',
+            backdropFilter: 'blur(10px)',
+            color: 'white',
+            border: '2px solid #f44336',
+            boxShadow: '0 4px 12px rgba(244, 67, 54, 0.4)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: '#d32f2f',
+              boxShadow: '0 6px 16px rgba(244, 67, 54, 0.5)',
+            },
+          }}
+        >
+          <CallEndIcon />
+        </IconButton>
+      </Box>
+
+      {showWhiteboard && (
+        <WhiteboardCanvas
+          socketManager={socketManager}
+          isVisible={showWhiteboard}
+          onClose={() => setShowWhiteboard(false)}
+          callId={callData?.callId || 'unknown'}
+          isTeacher={false}
+        />
+      )}
+      </Box>
+
+      {/* Chat Sidebar - Floating with Glassy Background */}
+      <Slide direction="left" in={showChat} mountOnEnter unmountOnExit>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '80px',
+            right: '20px',
+            width: 380,
+            height: 'calc(100vh - 160px)',
+            background: 'rgba(255, 255, 255, 0.15)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            zIndex: 10001,
+          }}
+        >
+          {/* Chat Header */}
+          <Box
+            sx={{
+              p: 2,
+              background: 'rgba(143, 163, 30, 0.2)',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderRadius: '16px 16px 0 0',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600, fontSize: '16px', color: '#FFFFFF' }}>
+              <ChatIcon sx={{ fontSize: 20, color: '#C6D870' }} />
+              Chat
+              {socketManager?.socket?.connected && (
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: '#4caf50',
+                    ml: 1,
+                  }}
+                  title="Connected"
+                />
+              )}
+              {!socketManager?.socket?.connected && (
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: '#f44336',
+                    ml: 1,
+                  }}
+                  title="Disconnected"
+                />
+              )}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={handleToggleChat}
+              sx={{ 
+                color: '#e8e8e8',
+                borderRadius: 1,
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  color: '#ffffff',
+                }
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Chat Messages */}
+          <Box
+            ref={chatContainerRef}
+            sx={{
+              flex: 1,
+              overflowY: 'auto',
+              p: 1,
+              minHeight: 0, // Important for flex shrinking
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              },
+              scrollbarWidth: 'none', // Firefox
+              msOverflowStyle: 'none', // IE/Edge
+            }}
+          >
+            {chatMessages.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  color: '#888',
+                  flexDirection: 'column',
+                  gap: 1,
+                }}
+              >
+                <ChatIcon sx={{ fontSize: 48, opacity: 0.3, color: '#555' }} />
+                <Typography variant="body2" sx={{ color: '#888' }}>No messages yet</Typography>
+                <Typography variant="caption" sx={{ color: '#666' }}>Start a conversation!</Typography>
+              </Box>
+            ) : (
+              chatMessages.map((msg) => (
+                <Box
+                  key={msg.id}
+                  sx={{
+                    mb: 1.5,
+                    p: 1.5,
+                    borderRadius: 2,
+                    backgroundColor: msg.isOwnMessage 
+                      ? 'rgba(156, 39, 176, 0.8)' 
+                      : 'rgba(255, 255, 255, 0.08)',
+                    marginLeft: msg.isOwnMessage ? 4 : 0,
+                    marginRight: msg.isOwnMessage ? 0 : 4,
+                    border: msg.isOwnMessage ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                    backdropFilter: 'blur(10px)',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5, color: msg.isOwnMessage ? '#ffffff' : '#e8e8e8', fontSize: '13px' }}>
+                    {msg.sender}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: msg.isOwnMessage ? '#ffffff' : '#e8e8e8', lineHeight: 1.4 }}>
+                    {msg.message}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: msg.isOwnMessage ? 'rgba(255, 255, 255, 0.7)' : '#a0a0a0', fontSize: '11px' }}>
+                    {msg.timestamp.toLocaleTimeString()}
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </Box>
+
+          <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+
+          {/* Message Input - Fixed at bottom */}
+          <Box 
+            sx={{ 
+              p: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0, // Prevent this from shrinking
+            }}
+          >
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+              <Box sx={{ flex: 1, position: 'relative' }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  multiline
+                  maxRows={3}
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#1e1e1e',
+                      color: '#e8e8e8',
+                      borderRadius: 2,
+                      '& fieldset': {
+                        borderColor: '#404040',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                    },
+                    '& .MuiInputBase-input::placeholder': {
+                      color: '#a0a0a0',
+                    },
+                  }}
+                  InputProps={{
+                    endAdornment: (
+                      <IconButton
+                        size="small"
+                        onClick={handleEmojiClick}
+                        sx={{ p: 0.5 }}
+                      >
+                        <EmojiIcon sx={{ fontSize: 20, color: '#888' }} />
+                      </IconButton>
+                    )
+                  }}
+                />
+              </Box>
+              <span>
+                <IconButton
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim()}
+                  sx={{
+                    backgroundColor: '#9c27b0',
+                    color: 'white',
+                    borderRadius: 2,
+                    '&:hover': {
+                      backgroundColor: '#7b1fa2',
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#404040',
+                      color: '#888',
+                    }
+                  }}
+                >
+                  <SendIcon />
+                </IconButton>
+              </span>
+            </Box>
+
+            {/* Emoji Picker Popover */}
+            <Popover
+              open={Boolean(emojiAnchorEl)}
+              anchorEl={emojiAnchorEl}
+              onClose={handleEmojiClose}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+              transformOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              sx={{ zIndex: 10005 }}
+            >
+              <Box
+                sx={{
+                  p: 2,
+                  maxWidth: 300,
+                  backgroundColor: '#2d2d2d',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(6, 1fr)',
+                  gap: 1,
+                }}
+              >
+                {commonEmojis.map((emoji, index) => (
+                  <IconButton
+                    key={index}
+                    onClick={() => addEmoji(emoji)}
+                    sx={{
+                      fontSize: '1.2rem',
+                      width: 36,
+                      height: 36,
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: '#444',
+                      }
+                    }}
+                  >
+                    {emoji}
+                  </IconButton>
+                ))}
+              </Box>
+            </Popover>
+          </Box>
+        </Box>
+      </Slide>
+    </Box>
+  );
+}
+
+export default VideoCallWindow;

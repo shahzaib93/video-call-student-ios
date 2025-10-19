@@ -1,0 +1,55 @@
+{
+  "name": "video-call-student-app",
+  "version": "1.0.0",
+  "description": "Student mobile application for video calling system",
+  "main": "src/index.jsx",
+  "homepage": "./",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rimraf dist",
+    "cap:init": "npx cap init",
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "npx cap add ios",
+    "cap:sync": "npx cap sync",
+    "cap:run:android": "npx cap run android",
+    "cap:run:ios": "npx cap run ios",
+    "cap:build:android": "npm run build && npx cap sync android && npx cap run android",
+    "cap:build:ios": "npm run build && npx cap sync ios && npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
+    "@capacitor/local-notifications": "^7.0.3",
+    "@capacitor/push-notifications": "^7.0.3",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.3",
+    "@mui/material": "^5.14.5",
+    "aws-sdk": "^2.1692.0",
+    "date-fns": "^4.1.0",
+    "firebase": "^12.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.15.0",
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.7.8",
+    "@vitejs/plugin-react": "^4.0.4",
+    "rimraf": "^6.0.1",
+    "vite": "^4.4.9"
+  },
+  "keywords": [
+    "capacitor",
+    "student",
+    "mobile",
+    "video-call"
+  ],
+  "author": "Video Call Team",
+  "license": "MIT"
+}

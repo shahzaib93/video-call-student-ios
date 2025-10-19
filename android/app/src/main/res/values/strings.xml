@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tarteel-e-Quran Student</string>
+    <string name="title_activity_main">Tarteel-e-Quran Student</string>
+    <string name="package_name">com.videocall.student</string>
+    <string name="custom_url_scheme">com.videocall.student</string>
+</resources>

@@ -1,0 +1,38 @@
+{
+  "appId": "com.videocall.student",
+  "appName": "Tarteel-e-Quran Student",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#667eea",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "Camera": {
+      "permissions": ["camera", "photos", "microphone"]
+    },
+    "Microphone": {
+      "permissions": ["microphone"]
+    },
+    "Device": {
+      "permissions": ["camera", "microphone"]
+    }
+  },
+  "android": {
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.RECORD_AUDIO",
+      "android.permission.MODIFY_AUDIO_SETTINGS",
+      "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.INTERNET"
+    ]
+  }
+}
