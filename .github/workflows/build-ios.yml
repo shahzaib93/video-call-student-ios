@@ -34,6 +34,7 @@ jobs:
       - name: Build iOS App (Debug)
         run: |
           cd ios/App
+          set -o pipefail
           xcodebuild -workspace App.xcworkspace \
                      -scheme App \
                      -configuration Debug \
@@ -43,7 +44,16 @@ jobs:
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGNING_ALLOWED=NO \
-                     ONLY_ACTIVE_ARCH=NO
+                     ONLY_ACTIVE_ARCH=NO 2>&1 | tee build.log
+
+      - name: Show build errors if failed
+        if: failure()
+        run: |
+          cd ios/App
+          echo "=== BUILD ERRORS ==="
+          grep -i "error:" build.log || echo "No explicit errors found"
+          echo "=== LAST 50 LINES ==="
+          tail -50 build.log
 
       - name: Locate build artifact
         run: |
