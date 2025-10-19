@@ -194,12 +194,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-			isa = PBXVariantGroup;
-			children = (
-				504EC30C1FED79650016851F /* Base */,
-			);
-			sourceTree = "<group>";
-		};
 		504EC3101FED79650016851F /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
