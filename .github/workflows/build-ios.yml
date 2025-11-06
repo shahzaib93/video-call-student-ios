@@ -25,11 +25,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        run: |
-          cd mobile-apps/student-app
-          nvm use --lts || echo "Using default Node"
-
       - name: Install dependencies
         run: npm ci
 
