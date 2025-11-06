@@ -5,12 +5,20 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-ios:
     name: Build iOS Application
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile-apps/student-app
+    env:
+      APP_SCHEME: App
+      ARCHIVE_DIR: ios/App/build
+      ARCHIVE_PATH: ios/App/build/App.xcarchive
+      EXPORT_PATH: ios/App/build/export
 
     steps:
       - name: Checkout code
@@ -21,6 +29,7 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: mobile-apps/student-app/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -36,38 +45,101 @@ jobs:
           cd ios/App
           pod install
 
-      - name: Build iOS App (Debug)
+      - name: Install provisioning profile
+        id: provisioning
+        env:
+          APPLE_MOBILEPROVISION: ${{ secrets.APPLE_MOBILEPROVISION }}
+        run: |
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          echo "$APPLE_MOBILEPROVISION" | base64 --decode > app.mobileprovision
+          security cms -D -i app.mobileprovision > app.plist
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' app.plist)
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' app.plist)
+          mv app.mobileprovision "$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
+          echo "uuid=$PROFILE_UUID" >> "$GITHUB_OUTPUT"
+          echo "name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Import signing certificate
+        env:
+          APPLE_P12: ${{ secrets.APPLE_P12 }}
+          APPLE_P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD }}
+        run: |
+          KEYCHAIN_PASSWORD=ios-build
+          echo "$APPLE_P12" | base64 --decode > signing.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import signing.p12 -k build.keychain -P "$APPLE_P12_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+      - name: Build iOS archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUNDLE_ID: ${{ secrets.APPLE_BUNDLE_ID }}
+          PROFILE_NAME: ${{ steps.provisioning.outputs.name }}
+          PROFILE_UUID: ${{ steps.provisioning.outputs.uuid }}
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
-                     -scheme App \
-                     -configuration Debug \
-                     -sdk iphonesimulator \
-                     -derivedDataPath build \
-                     -allowProvisioningUpdates \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO \
-                     ONLY_ACTIVE_ARCH=NO
+          ARCHIVE_PATH="$PWD/../build/App.xcarchive"
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme "$APP_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$ARCHIVE_PATH" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CODE_SIGN_STYLE=Manual \
+            archive
 
-      - name: Locate build artifact
+      - name: Export signed IPA
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUNDLE_ID: ${{ secrets.APPLE_BUNDLE_ID }}
+          PROFILE_NAME: ${{ steps.provisioning.outputs.name }}
         run: |
-          echo "Build completed successfully!"
-          find ios/App/build -name "*.app" -type d
+          cd ios/App
+          ARCHIVE_PATH="$PWD/../build/App.xcarchive"
+          cat <<PLIST > exportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+            <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+              <key>teamID</key>
+              <string>${APPLE_TEAM_ID}</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                <key>${BUNDLE_ID}</key>
+                <string>${PROFILE_NAME}</string>
+              </dict>
+            </dict>
+          </plist>
+PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportOptionsPlist exportOptions.plist \
+            -exportPath ../build/export
 
-      - name: Upload iOS App Artifact
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app-debug
-          path: ios/App/build/Build/Products/Debug-iphonesimulator/App.app
+          name: ios-app-development
+          path: mobile-apps/student-app/ios/App/build/export/*.ipa
           retention-days: 30
 
       - name: Build Summary
         run: |
-          echo "✅ iOS App built successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📱 Platform: iOS Simulator (Debug)" >> $GITHUB_STEP_SUMMARY
-          echo "📦 Artifact: ios-app-debug" >> $GITHUB_STEP_SUMMARY
-          echo "⏰ Retention: 30 days" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the artifact from the workflow run to get the .app file." >> $GITHUB_STEP_SUMMARY
+          echo "✅ Signed iOS App archive created" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Artifact: ios-app-development (.ipa)" >> $GITHUB_STEP_SUMMARY
+          echo "🔐 Signing: manual development cert & profile" >> $GITHUB_STEP_SUMMARY
