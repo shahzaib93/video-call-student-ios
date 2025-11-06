@@ -13,6 +13,7 @@ jobs:
     runs-on: macos-latest
 
     env:
+      PROJECT_DIR: .
       IOS_APP_DIR: ios/App
       ARCHIVE_PATH: ios/App/build/App.xcarchive
       EXPORT_PATH: ios/App/build/export
@@ -48,31 +49,36 @@ jobs:
           ASC_PRIVATE_KEY: ${{ secrets.APPLE_ASC_PRIVATE_KEY }}
         run: |
           mkdir -p ~/private_keys
-          echo "$ASC_PRIVATE_KEY" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          echo "$ASC_PRIVATE_KEY" | printf "%s" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
           chmod 600 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          echo "✅ API key saved"
 
-          # Verify key format
-          if ! head -1 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 | grep -q "BEGIN PRIVATE KEY"; then
-            echo "❌ Invalid API key format. Should start with -----BEGIN PRIVATE KEY-----"
-            exit 1
-          fi
-          echo "✅ API key format verified"
-
-      - name: Disable Push Notifications Capability
+      - name: Import signing certificate
+        env:
+          APPLE_P12: ${{ secrets.APPLE_P12_NEW }}
+          APPLE_P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD_NEW }}
         run: |
-          cd "$IOS_APP_DIR"
-          # Remove push notification entitlements if file exists
-          if [ -f "App/App.entitlements" ]; then
-            echo "Checking entitlements file..."
-            cat App/App.entitlements
-          fi
-          echo "✅ Capability check complete"
+          KEYCHAIN_PASSWORD=ios-build
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
 
-      - name: Build iOS archive (Automatic Signing)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$APPLE_P12" | base64 --decode > signing.p12
+          security import signing.p12 -k "$KEYCHAIN_PATH" -P "$APPLE_P12_PASSWORD" -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          rm signing.p12
+
+      - name: Build iOS archive
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
+          IOS_APP_DIR: ${{ env.IOS_APP_DIR }}
+          ARCHIVE_PATH: ${{ env.ARCHIVE_PATH }}
+          APP_SCHEME: ${{ env.APP_SCHEME }}
         run: |
           cd "$IOS_APP_DIR"
           xcodebuild \
@@ -86,29 +92,35 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             archive
 
-      - name: Export signed IPA (Automatic Signing)
+      - name: Export signed IPA
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_APP_DIR: ${{ env.IOS_APP_DIR }}
+          ARCHIVE_PATH: ${{ env.ARCHIVE_PATH }}
+          EXPORT_PATH: ${{ env.EXPORT_PATH }}
         run: |
           cd "$IOS_APP_DIR"
-          python3 - <<'PY'
-            import os, plistlib
-
-            plist_data = {
-                'method': 'development',
-                'signingStyle': 'automatic',
-                'stripSwiftSymbols': True,
-                'compileBitcode': False,
-                'teamID': os.environ['APPLE_TEAM_ID']
-            }
-            with open('exportOptions.plist', 'wb') as fh:
-                plistlib.dump(plist_data, fh)
-          PY
+          cat <<PLIST > exportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>teamID</key>
+            <string>${APPLE_TEAM_ID}</string>
+          </dict>
+          </plist>
+PLIST
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist exportOptions.plist \
@@ -126,5 +138,4 @@ jobs:
         run: |
           echo "✅ iOS App build successful" >> $GITHUB_STEP_SUMMARY
           echo "📦 Artifact: ios-app-development (.ipa)" >> $GITHUB_STEP_SUMMARY
-          echo "🔐 Signing: Automatic (App Store Connect API)" >> $GITHUB_STEP_SUMMARY
-          echo "🎯 Bundle ID: com.videocall.student" >> $GITHUB_STEP_SUMMARY
+          echo "🔐 Signing: Automatic provisioning" >> $GITHUB_STEP_SUMMARY
