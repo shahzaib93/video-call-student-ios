@@ -45,9 +45,9 @@ jobs:
         id: provisioning
         uses: apple-actions/download-provisioning-profiles@v2
         with:
-          app-store-connect-key-id: ${{ secrets.APPLE_ASC_KEY_ID }}
-          app-store-connect-key-issuer-id: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
-          app-store-connect-private-key: ${{ secrets.APPLE_ASC_PRIVATE_KEY }}
+          api-key-id: ${{ secrets.APPLE_ASC_KEY_ID }}
+          issuer-id: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
+          api-private-key: ${{ secrets.APPLE_ASC_PRIVATE_KEY }}
           profile-type: IOS_APP_DEVELOPMENT
           bundle-id: ${{ secrets.APPLE_BUNDLE_ID }}
 
