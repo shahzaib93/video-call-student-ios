@@ -30,15 +30,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ./mobile-apps/student-app
 
       - name: Build web assets
         run: npm run build
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ./mobile-apps/student-app
 
       - name: Sync Capacitor
         run: npx cap sync ios
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ./mobile-apps/student-app
 
       - name: Install CocoaPods dependencies
         run: |
