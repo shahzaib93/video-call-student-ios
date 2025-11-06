@@ -29,16 +29,19 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm ci
-        working-directory: ./mobile-apps/student-app
+        run: |
+          cd "$GITHUB_WORKSPACE/mobile-apps/student-app"
+          npm ci
 
       - name: Build web assets
-        run: npm run build
-        working-directory: ./mobile-apps/student-app
+        run: |
+          cd "$GITHUB_WORKSPACE/mobile-apps/student-app"
+          npm run build
 
       - name: Sync Capacitor
-        run: npx cap sync ios
-        working-directory: ./mobile-apps/student-app
+        run: |
+          cd "$GITHUB_WORKSPACE/mobile-apps/student-app"
+          npx cap sync ios
 
       - name: Install CocoaPods dependencies
         run: |
