@@ -56,6 +56,14 @@ jobs:
           echo "uuid=$PROFILE_UUID" >> "$GITHUB_OUTPUT"
           echo "name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Verify signing bundle
+        env:
+          APPLE_P12: ${{ secrets.APPLE_P12_NEW }}
+          APPLE_P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD_NEW }}
+        run: |
+          echo "$APPLE_P12" | base64 --decode > signing.p12
+          openssl pkcs12 -in signing.p12 -nodes -noout -passin pass:"$APPLE_P12_PASSWORD"
+
       - name: Import signing certificate
         env:
           APPLE_P12: ${{ secrets.APPLE_P12_NEW }}
