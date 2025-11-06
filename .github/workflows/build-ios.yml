@@ -56,6 +56,15 @@ jobs:
           echo "uuid=$PROFILE_UUID" >> "$GITHUB_OUTPUT"
           echo "name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Show installed provisioning profiles
+        run: |
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          ls "$PROFILE_DIR"
+          for f in "$PROFILE_DIR"/*.mobileprovision; do
+            echo "Profile: $f"
+            security cms -D -i "$f" | grep -E 'Name|UUID|application-identifier'
+          done
+
       - name: Verify signing bundle
         env:
           APPLE_P12: ${{ secrets.APPLE_P12_NEW }}
