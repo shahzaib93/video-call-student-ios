@@ -103,21 +103,21 @@ jobs:
         run: |
           cd "${IOS_APP_DIR}"
           python3 - <<'PY'
-import os, plistlib
+            import os, plistlib
 
-plist_data = {
-    'method': 'development',
-    'signingStyle': 'manual',
-    'stripSwiftSymbols': True,
-    'compileBitcode': False,
-    'teamID': os.environ['APPLE_TEAM_ID'],
-    'provisioningProfiles': {
-        os.environ['APPLE_BUNDLE_ID']: os.environ['PROFILE_NAME']
-    }
-}
-with open('exportOptions.plist', 'wb') as fh:
-    plistlib.dump(plist_data, fh)
-PY
+            plist_data = {
+                'method': 'development',
+                'signingStyle': 'manual',
+                'stripSwiftSymbols': True,
+                'compileBitcode': False,
+                'teamID': os.environ['APPLE_TEAM_ID'],
+                'provisioningProfiles': {
+                    os.environ['APPLE_BUNDLE_ID']: os.environ['PROFILE_NAME']
+                }
+            }
+            with open('exportOptions.plist', 'wb') as fh:
+                plistlib.dump(plist_data, fh)
+          PY
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist exportOptions.plist \
