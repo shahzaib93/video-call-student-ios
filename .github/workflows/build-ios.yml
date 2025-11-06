@@ -11,12 +11,14 @@ jobs:
   build-ios:
     name: Build iOS Application
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile-apps/student-app
 
     env:
-      PROJECT_DIR: mobile-apps/student-app
-      IOS_APP_DIR: mobile-apps/student-app/ios/App
-      ARCHIVE_PATH: mobile-apps/student-app/ios/App/build/App.xcarchive
-      EXPORT_PATH: mobile-apps/student-app/ios/App/build/export
+      IOS_APP_DIR: ios/App
+      ARCHIVE_PATH: ios/App/build/App.xcarchive
+      EXPORT_PATH: ios/App/build/export
       APP_SCHEME: App
 
     steps:
@@ -29,23 +31,17 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: |
-          cd "$GITHUB_WORKSPACE/mobile-apps/student-app"
-          npm ci
+        run: npm ci
 
       - name: Build web assets
-        run: |
-          cd "$GITHUB_WORKSPACE/mobile-apps/student-app"
-          npm run build
+        run: npm run build
 
       - name: Sync Capacitor
-        run: |
-          cd "$GITHUB_WORKSPACE/mobile-apps/student-app"
-          npx cap sync ios
+        run: npx cap sync ios
 
       - name: Install CocoaPods dependencies
         run: |
-          cd "${IOS_APP_DIR}"
+          cd "$IOS_APP_DIR"
           pod install
 
       - name: Install provisioning profile
@@ -83,7 +79,7 @@ jobs:
           PROFILE_NAME: ${{ steps.provisioning.outputs.name }}
           PROFILE_UUID: ${{ steps.provisioning.outputs.uuid }}
         run: |
-          cd "${IOS_APP_DIR}"
+          cd "$IOS_APP_DIR"
           xcodebuild \
             -workspace App.xcworkspace \
             -scheme "$APP_SCHEME" \
@@ -102,7 +98,7 @@ jobs:
           APPLE_BUNDLE_ID: ${{ secrets.APPLE_BUNDLE_ID }}
           PROFILE_NAME: ${{ steps.provisioning.outputs.name }}
         run: |
-          cd "${IOS_APP_DIR}"
+          cd "$IOS_APP_DIR"
           python3 - <<'PY'
             import os, plistlib
 
