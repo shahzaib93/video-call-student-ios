@@ -11,9 +11,6 @@ jobs:
   build-ios:
     name: Build iOS Application
     runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: mobile-apps/student-app
 
     env:
       IOS_APP_DIR: ios/App
