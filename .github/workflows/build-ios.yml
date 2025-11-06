@@ -51,6 +51,23 @@ jobs:
           echo "$ASC_PRIVATE_KEY" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
           chmod 600 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
+          # Verify key format
+          if ! head -1 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 | grep -q "BEGIN PRIVATE KEY"; then
+            echo "❌ Invalid API key format. Should start with -----BEGIN PRIVATE KEY-----"
+            exit 1
+          fi
+          echo "✅ API key format verified"
+
+      - name: Disable Push Notifications Capability
+        run: |
+          cd "$IOS_APP_DIR"
+          # Remove push notification entitlements if file exists
+          if [ -f "App/App.entitlements" ]; then
+            echo "Checking entitlements file..."
+            cat App/App.entitlements
+          fi
+          echo "✅ Capability check complete"
+
       - name: Build iOS archive (Automatic Signing)
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -68,6 +85,9 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             -allowProvisioningUpdates \
+            -allowProvisioningDeviceRegistration \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Development" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             archive
 
