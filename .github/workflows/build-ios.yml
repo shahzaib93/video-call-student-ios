@@ -43,18 +43,13 @@ jobs:
 
       - name: Install provisioning profile
         id: provisioning
-        env:
-          APPLE_MOBILEPROVISION: ${{ secrets.APPLE_MOBILEPROVISION }}
-        run: |
-          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILE_DIR"
-          echo "$APPLE_MOBILEPROVISION" | base64 --decode > app.mobileprovision
-          security cms -D -i app.mobileprovision > app.plist
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' app.plist)
-          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' app.plist)
-          mv app.mobileprovision "$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
-          echo "uuid=$PROFILE_UUID" >> "$GITHUB_OUTPUT"
-          echo "name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+        uses: apple-actions/download-provisioning-profiles@v2
+        with:
+          app-store-connect-key-id: ${{ secrets.APPLE_ASC_KEY_ID }}
+          app-store-connect-key-issuer-id: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
+          app-store-connect-private-key: ${{ secrets.APPLE_ASC_PRIVATE_KEY }}
+          profile-type: IOS_APP_DEVELOPMENT
+          bundle-id: ${{ secrets.APPLE_BUNDLE_ID }}
 
       - name: Show installed provisioning profiles
         run: |
