@@ -76,7 +76,8 @@ jobs:
           security list-keychains -s build.keychain
           security default-keychain -s build.keychain
           security import signing.p12 -k build.keychain -P "$APPLE_P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          KEYCHAIN=$(security list-keychains | head -n1 | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
 
       - name: Build iOS archive
         env:
