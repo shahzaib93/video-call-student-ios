@@ -104,22 +104,22 @@ jobs:
           cd ios/App
           ARCHIVE_PATH="$PWD/../build/App.xcarchive"
           python3 - <<'PY'
-import os, plistlib
+            import os, plistlib
 
-data = {
-    'method': 'development',
-    'signingStyle': 'manual',
-    'stripSwiftSymbols': True,
-    'compileBitcode': False,
-    'teamID': os.environ['APPLE_TEAM_ID'],
-    'provisioningProfiles': {
-        os.environ['BUNDLE_ID']: os.environ['PROFILE_NAME']
-    }
-}
+            data = {
+                'method': 'development',
+                'signingStyle': 'manual',
+                'stripSwiftSymbols': True,
+                'compileBitcode': False,
+                'teamID': os.environ['APPLE_TEAM_ID'],
+                'provisioningProfiles': {
+                    os.environ['BUNDLE_ID']: os.environ['PROFILE_NAME']
+                }
+            }
 
-with open('exportOptions.plist', 'wb') as plist_file:
-    plistlib.dump(data, plist_file)
-PY
+            with open('exportOptions.plist', 'wb') as plist_file:
+                plistlib.dump(data, plist_file)
+          PY
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist exportOptions.plist \
