@@ -103,29 +103,23 @@ jobs:
         run: |
           cd ios/App
           ARCHIVE_PATH="$PWD/../build/App.xcarchive"
-          cat <<PLIST > exportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-            <dict>
-              <key>method</key>
-              <string>development</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>compileBitcode</key>
-              <false/>
-              <key>teamID</key>
-              <string>${APPLE_TEAM_ID}</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                <key>${BUNDLE_ID}</key>
-                <string>${PROFILE_NAME}</string>
-              </dict>
-            </dict>
-          </plist>
-PLIST
+          python3 - <<'PY'
+import os, plistlib
+
+data = {
+    'method': 'development',
+    'signingStyle': 'manual',
+    'stripSwiftSymbols': True,
+    'compileBitcode': False,
+    'teamID': os.environ['APPLE_TEAM_ID'],
+    'provisioningProfiles': {
+        os.environ['BUNDLE_ID']: os.environ['PROFILE_NAME']
+    }
+}
+
+with open('exportOptions.plist', 'wb') as plist_file:
+    plistlib.dump(data, plist_file)
+PY
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist exportOptions.plist \
