@@ -97,19 +97,19 @@ jobs:
         run: |
           cd "$IOS_APP_DIR"
           python3 - <<'PY'
-import os, plistlib
+            import os, plistlib
 
-data = {
-    'method': 'development',
-    'signingStyle': 'automatic',
-    'stripSwiftSymbols': True,
-    'compileBitcode': False,
-    'teamID': os.environ['APPLE_TEAM_ID'],
-}
+            data = {
+                'method': 'development',
+                'signingStyle': 'automatic',
+                'stripSwiftSymbols': True,
+                'compileBitcode': False,
+                'teamID': os.environ['APPLE_TEAM_ID'],
+            }
 
-with open('exportOptions.plist', 'wb') as fh:
-    plistlib.dump(data, fh)
-PY
+            with open('exportOptions.plist', 'wb') as fh:
+                plistlib.dump(data, fh)
+          PY
           xcodebuild \
             -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
