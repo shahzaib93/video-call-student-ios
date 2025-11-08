@@ -94,6 +94,8 @@ jobs:
       - name: Export signed IPA
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
         run: |
           cd "$IOS_APP_DIR"
           python3 - <<'PY'
@@ -113,13 +115,16 @@ jobs:
 
           echo "📋 Export options created:"
           cat exportOptions.plist
-          echo "🚀 Starting export..."
+          echo "🚀 Starting export with API authentication..."
           xcodebuild \
             -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist exportOptions.plist \
             -exportPath "$EXPORT_PATH" \
-            -allowProvisioningUpdates || {
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" || {
               echo "❌ Export failed, checking what was created:"
               ls -la "$EXPORT_PATH" || echo "Export path doesn't exist"
               exit 1
