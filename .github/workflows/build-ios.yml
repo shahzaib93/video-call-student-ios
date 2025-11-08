@@ -44,9 +44,18 @@ jobs:
           echo ""
           echo "✅ Build verification complete"
 
+      - name: Clean iOS build artifacts
+        run: |
+          echo "🧹 Cleaning old iOS build artifacts and cache..."
+          rm -rf ios/App/App/public
+          rm -rf ios/App/App/capacitor.config.json
+          rm -rf ios/App/build
+          rm -rf ios/App/DerivedData
+          echo "✅ Old files and build cache removed"
+
       - name: Sync Capacitor
         run: |
-          echo "🔄 Syncing Capacitor iOS..."
+          echo "🔄 Syncing Capacitor iOS (fresh sync)..."
           npx cap sync ios
           echo ""
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
@@ -54,6 +63,16 @@ jobs:
           echo ""
           echo "📄 Verifying index.html was copied to iOS:"
           ls -la ios/App/App/public/
+          echo ""
+          echo "📄 Checking if index.html exists and has content:"
+          if [ -f "ios/App/App/public/index.html" ]; then
+            echo "✅ index.html EXISTS"
+            wc -l ios/App/App/public/index.html
+            head -30 ios/App/App/public/index.html
+          else
+            echo "❌ ERROR: index.html DOES NOT EXIST!"
+            exit 1
+          fi
           echo ""
           echo "✅ Capacitor sync complete"
 
