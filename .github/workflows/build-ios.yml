@@ -33,8 +33,28 @@ jobs:
       - name: Build web assets
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          echo "📦 Checking dist folder contents:"
+          ls -la dist/
+          echo ""
+          echo "📄 Checking dist/index.html exists:"
+          cat dist/index.html | head -20
+          echo ""
+          echo "✅ Build verification complete"
+
       - name: Sync Capacitor
-        run: npx cap sync ios
+        run: |
+          echo "🔄 Syncing Capacitor iOS..."
+          npx cap sync ios --no-build
+          echo ""
+          echo "📋 Verifying capacitor.config.json was copied to iOS:"
+          cat ios/App/App/capacitor.config.json
+          echo ""
+          echo "📄 Verifying index.html was copied to iOS:"
+          ls -la ios/App/App/public/
+          echo ""
+          echo "✅ Capacitor sync complete"
 
       - name: Install CocoaPods dependencies
         run: |
