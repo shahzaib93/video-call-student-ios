@@ -6,11 +6,14 @@
     "androidScheme": "https",
     "iosScheme": "capacitor",
     "cleartext": true,
-    "allowNavigation": ["*"]
+    "allowNavigation": ["*"],
+    "hostname": "localhost"
   },
   "ios": {
     "contentInset": "automatic",
-    "scheme": "capacitor"
+    "scheme": "capacitor",
+    "limitsNavigationsToAppBoundDomains": false,
+    "webContentsDebuggingEnabled": true
   },
   "plugins": {
     "SplashScreen": {
