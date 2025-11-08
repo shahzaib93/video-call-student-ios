@@ -138,7 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-app-development
-          path: ios/App/build/export/*.ipa
+          path: ios/App/ios/App/build/export/*.ipa
           retention-days: 30
 
       - name: Build Summary
