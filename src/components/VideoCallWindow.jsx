@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import WhiteboardCanvas from './WhiteboardCanvas';
 import { auth } from '../config/firebase';
 import {
@@ -86,6 +86,64 @@ function VideoCallWindow({
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [micAudioLevel, setMicAudioLevel] = useState(0);
   const [speakerAudioLevel, setSpeakerAudioLevel] = useState(0);
+  const [remoteVideoAspectRatio, setRemoteVideoAspectRatio] = useState(16 / 9);
+  const [isRemotePortrait, setIsRemotePortrait] = useState(false);
+  const remoteVideoWrapperStyles = useMemo(() => {
+    if (isRemotePortrait) {
+      return {
+        position: 'relative',
+        width: { xs: '80%', sm: '70%' },
+        maxWidth: 420,
+        maxHeight: '85vh',
+        aspectRatio: remoteVideoAspectRatio ? `${remoteVideoAspectRatio}` : '9 / 16',
+        borderRadius: 3,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+        boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        transition: 'all 0.3s ease'
+      };
+    }
+
+    return {
+      position: 'relative',
+      width: '100%',
+      maxWidth: '100vw',
+      aspectRatio: remoteVideoAspectRatio ? `${remoteVideoAspectRatio}` : '16 / 9',
+      height: 'auto',
+      maxHeight: '95vh',
+      margin: '0 auto',
+      backgroundColor: '#000',
+      borderRadius: { xs: 0, sm: 2 },
+      overflow: 'hidden',
+      transition: 'all 0.3s ease'
+    };
+  }, [isRemotePortrait, remoteVideoAspectRatio]);
+
+  const updateRemoteVideoLayout = useCallback(() => {
+    try {
+      const video = remoteVideoRef.current;
+      const track = remoteStream?.getVideoTracks?.()[0];
+      let width = track?.getSettings?.().width;
+      let height = track?.getSettings?.().height;
+
+      if ((!width || !height) && video) {
+        width = video.videoWidth;
+        height = video.videoHeight;
+      }
+
+      if (width && height) {
+        const ratio = width / height;
+        setRemoteVideoAspectRatio(ratio || (16 / 9));
+        setIsRemotePortrait(ratio < 1);
+      }
+    } catch (error) {
+      console.warn('⚠️ Student: Failed to update remote video layout', error);
+    }
+  }, [remoteStream]);
+
   // Get language from user settings or default to en-US
   const [selectedLanguage, setSelectedLanguage] = useState(sttLanguage || 'en-US');
   
@@ -126,6 +184,32 @@ function VideoCallWindow({
       webrtcService.removeEventListener('remote-stream', handleRemoteStream);
     };
   }, [webrtcService]);
+
+  useEffect(() => {
+    updateRemoteVideoLayout();
+
+    const videoEl = remoteVideoRef.current;
+    const track = remoteStream?.getVideoTracks?.()[0];
+
+    const handleMetadata = () => updateRemoteVideoLayout();
+
+    if (videoEl) {
+      videoEl.addEventListener('loadedmetadata', handleMetadata);
+    }
+
+    if (track) {
+      track.onresize = handleMetadata;
+    }
+
+    return () => {
+      if (videoEl) {
+        videoEl.removeEventListener('loadedmetadata', handleMetadata);
+      }
+      if (track) {
+        track.onresize = null;
+      }
+    };
+  }, [remoteStream, updateRemoteVideoLayout]);
 
   // Initialize connection status when component loads
   useEffect(() => {
@@ -897,20 +981,25 @@ function VideoCallWindow({
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
+          overflow: 'hidden',
+          padding: isRemotePortrait ? { xs: 2, sm: 3 } : 0,
         }}
       >
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          controls={false}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            backgroundColor: '#222',
-          }}
-        />
+        <Box sx={remoteVideoWrapperStyles}>
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            controls={false}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              backgroundColor: '#000',
+              display: 'block'
+            }}
+          />
+        </Box>
 
         {!remoteStream && (
           <Box
@@ -934,15 +1023,8 @@ function VideoCallWindow({
             position: 'absolute',
             top: 'max(20px, env(safe-area-inset-top))',
             right: 'max(20px, env(safe-area-inset-right))',
-            width: {
-              xs: 100,  // Smaller on mobile portrait
-              sm: 120,  // Standard on larger screens
-            },
-            height: {
-              xs: 140,  // Smaller on mobile portrait  
-              sm: 160,  // Standard on larger screens
-            },
-            // Adjust size for landscape orientation on mobile
+            width: isRemotePortrait ? { xs: 88, sm: 110 } : { xs: 120, sm: 160 },
+            height: isRemotePortrait ? { xs: 118, sm: 150 } : { xs: 82, sm: 120 },
             '@media (max-height: 500px) and (orientation: landscape)': {
               width: 80,
               height: 100,
@@ -952,7 +1034,8 @@ function VideoCallWindow({
             borderRadius: 3,
             overflow: 'hidden',
             border: 'none',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+            transition: 'all 0.3s ease',
           }}
         >
           <video
@@ -966,7 +1049,7 @@ function VideoCallWindow({
               objectFit: 'cover',
             }}
           />
-          
+
           {!isVideoEnabled && (
             <Box
               sx={{
@@ -981,7 +1064,7 @@ function VideoCallWindow({
                 justifyContent: 'center',
               }}
             >
-              <VideocamOffIcon sx={{ color: 'white', fontSize: 40 }} />
+              <VideocamOffIcon sx={{ color: 'white', fontSize: 32 }} />
             </Box>
           )}
         </Box>

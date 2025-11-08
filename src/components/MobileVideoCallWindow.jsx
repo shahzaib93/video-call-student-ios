@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   IconButton,
@@ -27,6 +27,7 @@ import {
   Chat as ChatIcon,
   Menu as MenuIcon,
   Close as CloseIcon,
+  ScreenRotation as ScreenRotationIcon,
 } from '@mui/icons-material';
 
 function MobileVideoCallWindow({ 
@@ -53,6 +54,167 @@ function MobileVideoCallWindow({
   const [remoteVolume, setRemoteVolume] = useState(0.7);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteVideoAspectRatio, setRemoteVideoAspectRatio] = useState(16 / 9);
+  const [isRemotePortrait, setIsRemotePortrait] = useState(false);
+  const [isRemoteRotated, setIsRemoteRotated] = useState(false);
+  const [viewportSize, setViewportSize] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0,
+  }));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updateViewport = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    updateViewport();
+
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+    };
+  }, []);
+
+  const displayIsPortrait = useMemo(() => {
+    if (!remoteVideoAspectRatio) {
+      return isRemoteRotated ? !isRemotePortrait : isRemotePortrait;
+    }
+
+    const effectiveAspectRatio = isRemoteRotated
+      ? 1 / remoteVideoAspectRatio
+      : remoteVideoAspectRatio;
+
+    return effectiveAspectRatio < 1;
+  }, [isRemotePortrait, remoteVideoAspectRatio, isRemoteRotated]);
+
+  const displayAspectRatio = useMemo(() => {
+    if (!remoteVideoAspectRatio) {
+      return undefined;
+    }
+    if (isRemoteRotated) {
+      return remoteVideoAspectRatio === 0 ? undefined : 1 / remoteVideoAspectRatio;
+    }
+    return remoteVideoAspectRatio;
+  }, [remoteVideoAspectRatio, isRemoteRotated]);
+
+  const rotatedVideoDimensions = useMemo(() => {
+    if (!isRemoteRotated || !remoteVideoAspectRatio) {
+      return null;
+    }
+
+    const ratio = remoteVideoAspectRatio;
+    const viewportWidth = viewportSize.width || 0;
+    const viewportHeight = viewportSize.height || 0;
+
+    if (!viewportWidth || !viewportHeight) {
+      return null;
+    }
+
+    let displayWidth = viewportHeight * 1.34;
+    let displayHeight = displayWidth / ratio;
+
+    const maxDisplayWidth = viewportWidth * 1.75;
+    if (displayWidth > maxDisplayWidth) {
+      displayWidth = maxDisplayWidth;
+      displayHeight = displayWidth / ratio;
+    }
+
+    const maxDisplayHeight = viewportWidth * 1.65;
+    if (displayHeight > maxDisplayHeight) {
+      displayHeight = maxDisplayHeight;
+      displayWidth = displayHeight * ratio;
+    }
+
+    return {
+      displayWidth,
+      displayHeight,
+    };
+  }, [isRemoteRotated, remoteVideoAspectRatio, viewportSize]);
+
+  const remoteVideoWrapperStyles = useMemo(() => {
+    const aspect = displayAspectRatio || (displayIsPortrait ? 9 / 16 : 16 / 9);
+
+    if (isRemoteRotated && rotatedVideoDimensions) {
+      return {
+        position: 'relative',
+        width: `${rotatedVideoDimensions.displayHeight}px`,
+        height: `${rotatedVideoDimensions.displayWidth}px`,
+        margin: '0 auto',
+        backgroundColor: '#000',
+        borderRadius: { xs: 0, sm: 2 },
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        transition: 'all 0.3s ease',
+      };
+    }
+
+    if (displayIsPortrait) {
+      return {
+        position: 'relative',
+        width: { xs: '88%', sm: '70%' },
+        maxWidth: 460,
+        maxHeight: '85vh',
+        aspectRatio: aspect || 9 / 16,
+        borderRadius: 3,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+        boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        transition: 'all 0.3s ease'
+      };
+    }
+
+    return {
+      position: 'relative',
+      width: '100%',
+      maxWidth: '100vw',
+      aspectRatio: aspect || 16 / 9,
+      height: 'auto',
+      maxHeight: '90vh',
+      margin: '0 auto',
+      backgroundColor: '#000',
+      borderRadius: { xs: 0, sm: 2 },
+      overflow: 'hidden',
+      transition: 'all 0.3s ease'
+    };
+  }, [displayIsPortrait, displayAspectRatio, isRemoteRotated, rotatedVideoDimensions]);
+
+  const updateRemoteVideoLayout = useCallback(() => {
+    try {
+      const video = remoteVideoRef.current;
+      const track = remoteStream?.getVideoTracks?.()[0];
+
+      let width = track?.getSettings?.().width;
+      let height = track?.getSettings?.().height;
+
+      if ((!width || !height) && video) {
+        width = video.videoWidth;
+        height = video.videoHeight;
+      }
+
+      if (width && height) {
+        const ratio = width / height;
+        setRemoteVideoAspectRatio(ratio || (16 / 9));
+        setIsRemotePortrait(ratio < 1);
+      }
+    } catch (error) {
+      console.warn('⚠️ Student Mobile: Failed to derive remote video layout', error);
+    }
+  }, [remoteStream]);
 
   // Initialize streams using the same approach as desktop VideoCallWindow
   useEffect(() => {
@@ -153,6 +315,32 @@ function MobileVideoCallWindow({
       });
     }
   }, [remoteStream, remoteVolume]);
+
+  useEffect(() => {
+    updateRemoteVideoLayout();
+
+    const videoEl = remoteVideoRef.current;
+    const track = remoteStream?.getVideoTracks?.()[0];
+
+    const handleMetadata = () => updateRemoteVideoLayout();
+
+    if (videoEl) {
+      videoEl.addEventListener('loadedmetadata', handleMetadata);
+    }
+
+    if (track) {
+      track.onresize = handleMetadata;
+    }
+
+    return () => {
+      if (videoEl) {
+        videoEl.removeEventListener('loadedmetadata', handleMetadata);
+      }
+      if (track) {
+        track.onresize = null;
+      }
+    };
+  }, [remoteStream, updateRemoteVideoLayout]);
 
   // Listen for remote stream from WebRTC service (same as desktop VideoCallWindow)
   useEffect(() => {
@@ -338,19 +526,50 @@ function MobileVideoCallWindow({
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
+            padding: displayIsPortrait && !isRemoteRotated ? { xs: 2, sm: 3 } : 0,
           }}
         >
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-          />
-          
+          <Box sx={remoteVideoWrapperStyles}>
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              style={{
+                position: isRemoteRotated ? 'absolute' : 'static',
+                top: isRemoteRotated ? '50%' : undefined,
+                left: isRemoteRotated ? '50%' : undefined,
+                width: isRemoteRotated && rotatedVideoDimensions
+                  ? `${rotatedVideoDimensions.displayWidth}px`
+                  : '100%',
+                height: isRemoteRotated && rotatedVideoDimensions
+                  ? `${rotatedVideoDimensions.displayHeight}px`
+                  : '100%',
+                objectFit: 'contain',
+                backgroundColor: '#000',
+                display: 'block',
+                transform: isRemoteRotated ? 'translate(-50%, -50%) rotate(90deg)' : 'none',
+                transformOrigin: 'center center',
+              }}
+            />
+          </Box>
+
+          {!remoteStream && (
+            <Box
+              sx={{
+                position: 'absolute',
+                color: 'white',
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="h6">
+                {callStatus === 'connecting' ? 'Calling teacher...' : 'Waiting for video'}
+              </Typography>
+              <Typography variant="body2" color="grey.400">
+                {callStatus === 'connecting' ? 'Preparing connection' : 'Attempting to receive stream'}
+              </Typography>
+            </Box>
+          )}
+
           {/* Call Status Overlay */}
           <Box
             sx={{
@@ -362,6 +581,7 @@ function MobileVideoCallWindow({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              gap: 1,
             }}
           >
             <Paper
@@ -383,18 +603,38 @@ function MobileVideoCallWindow({
             </Paper>
             
             {/* Teacher Info */}
-            <Paper
-              sx={{
-                px: 2,
-                py: 1,
-                backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              <Typography variant="body2" fontWeight={600}>
-                {callData?.teacherName || 'Teacher'}
-              </Typography>
-            </Paper>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Paper
+                sx={{
+                  px: 2,
+                  py: 1,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
+                <Typography variant="body2" fontWeight={600}>
+                  {callData?.teacherName || 'Teacher'}
+                </Typography>
+              </Paper>
+              <IconButton
+                size="small"
+                onClick={() => setIsRemoteRotated((prev) => !prev)}
+                sx={{
+                  backgroundColor: isRemoteRotated
+                    ? theme.palette.primary.main
+                    : alpha(theme.palette.background.paper, 0.9),
+                  color: isRemoteRotated ? '#fff' : theme.palette.primary.main,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.4)}`,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.main,
+                    color: '#fff',
+                  },
+                }}
+              >
+                <ScreenRotationIcon fontSize="inherit" />
+              </IconButton>
+            </Box>
           </Box>
         </Box>
 

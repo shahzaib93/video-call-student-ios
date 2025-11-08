@@ -82,3 +82,23 @@ ui-debug.log
 
 # Mac
 .DS_Store
+
+# ===================================
+# IMPORTANT: Security & Credentials
+# ===================================
+# Never commit these files!
+*.p12
+*.cer
+*.p8
+*.key
+*.mobileprovision
+*.certSigningRequest
+*_base64.txt
+ios_distribution*
+google-cloud-key.json
+firebase-service-account*.json
+
+# Build outputs that shouldn't be committed
+App.app/
+*.xcarchive/
+ios/ios-app-student/

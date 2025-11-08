@@ -1,6 +1,6 @@
 {
 	"appId": "com.videocall.student",
-	"appName": "Tarteel-e-Quran Student",
+	"appName": "Video Call Student",
 	"webDir": "dist",
 	"server": {
 		"androidScheme": "http"

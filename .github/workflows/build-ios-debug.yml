@@ -1,0 +1,87 @@
+name: Build iOS App (Debug - No Signing)
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios-debug:
+    name: Build iOS Debug (Unsigned)
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: mobile-apps/student-app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: mobile-apps/student-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor to iOS
+        run: npx cap sync ios
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Build iOS app (Debug, unsigned)
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphoneos \
+            -derivedDataPath ./build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Locate built app
+        run: |
+          echo "🔍 Searching for App.app..."
+          find ios/App/build -name "App.app" -type d
+
+      - name: Package app for download
+        run: |
+          cd ios/App/build/Build/Products/Debug-iphoneos
+          zip -r App.app.zip App.app
+
+      - name: Upload .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-debug-unsigned
+          path: mobile-apps/student-app/ios/App/build/Build/Products/Debug-iphoneos/App.app.zip
+          retention-days: 30
+
+      - name: Build Summary
+        run: |
+          echo "✅ iOS Debug build successful" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Artifact: **ios-app-debug-unsigned** (App.app.zip)" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Unsigned build** - Can be signed locally with Xcode" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📲 To test on your iPhone:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the artifact (App.app.zip)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract to get App.app" >> $GITHUB_STEP_SUMMARY
+          echo "3. Open ios/App/App.xcworkspace in Xcode (on a borrowed/rented Mac)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Connect your iPhone" >> $GITHUB_STEP_SUMMARY
+          echo "5. Select your iPhone as target device" >> $GITHUB_STEP_SUMMARY
+          echo "6. Click Run - Xcode will sign with your FREE Apple ID" >> $GITHUB_STEP_SUMMARY
