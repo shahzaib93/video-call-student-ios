@@ -5,18 +5,7 @@ class ViewController: CAPBridgeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Debug: Print Capacitor configuration
-        print("🔍 Capacitor Bridge loaded")
-        print("🔍 Start path: \(self.bridge?.config.serverURL?.absoluteString ?? "nil")")
-
-        // Enable web view debugging
-        if #available(iOS 16.4, *) {
-            self.webView?.isInspectable = true
-        }
-
-        // Log when page loads
-        self.webView?.configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        // Do any additional setup after loading the view.
     }
 
     override func didReceiveMemoryWarning() {
