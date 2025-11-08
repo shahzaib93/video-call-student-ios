@@ -44,19 +44,15 @@ jobs:
           echo ""
           echo "✅ Build verification complete"
 
-      - name: Clean iOS build artifacts
+      - name: Remove and recreate iOS platform
         run: |
-          echo "🧹 Cleaning old iOS build artifacts and cache..."
-          rm -rf ios/App/App/public
-          rm -rf ios/App/App/capacitor.config.json
-          rm -rf ios/App/build
-          rm -rf ios/App/DerivedData
-          echo "✅ Old files and build cache removed"
+          echo "🗑️ Completely removing iOS platform..."
+          rm -rf ios
+          echo "✅ iOS platform removed"
 
-      - name: Sync Capacitor
-        run: |
-          echo "🔄 Syncing Capacitor iOS (fresh sync)..."
-          npx cap sync ios
+          echo "🆕 Adding fresh iOS platform..."
+          npx cap add ios
+          echo "✅ Fresh iOS platform added"
           echo ""
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
           cat ios/App/App/capacitor.config.json
@@ -75,6 +71,17 @@ jobs:
           fi
           echo ""
           echo "✅ Capacitor sync complete"
+
+      - name: Verify iOS project structure
+        run: |
+          echo "📋 Checking iOS project structure..."
+          ls -la ios/App/App/
+          echo ""
+          echo "📄 Checking public folder:"
+          ls -la ios/App/App/public/
+          echo ""
+          echo "📄 First 50 lines of index.html:"
+          head -50 ios/App/App/public/index.html
 
       - name: Install CocoaPods dependencies
         run: |
