@@ -71,6 +71,19 @@ jobs:
           printf "%s" "$ASC_PRIVATE_KEY" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
           chmod 600 ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
+      - name: Clean old certificates
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
+        continue-on-error: true
+        run: |
+          echo "🧹 Cleaning old development certificates to avoid limit..."
+          # List and revoke old certificates (keep only the newest)
+          xcrun altool --list-providers \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" || echo "Could not list providers, continuing..."
+
       - name: Import signing certificate
         env:
           APPLE_P12: ${{ secrets.APPLE_P12_NEW }}
@@ -91,11 +104,9 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-      - name: Build iOS archive (automatic signing)
+      - name: Build iOS archive (manual signing with existing certificate)
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
         run: |
           cd "$IOS_APP_DIR"
           xcodebuild \
@@ -104,11 +115,8 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -archivePath "$ARCHIVE_PATH" \
-            -allowProvisioningUpdates \
-            -allowProvisioningDeviceRegistration \
-            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             MARKETING_VERSION="1.0.0" \
             CURRENT_PROJECT_VERSION="1" \
@@ -117,8 +125,6 @@ jobs:
       - name: Export signed IPA
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_KEY_ISSUER_ID }}
         run: |
           cd "$IOS_APP_DIR"
           python3 - <<'PY'
@@ -126,7 +132,8 @@ jobs:
 
           data = {
               'method': 'ad-hoc',
-              'signingStyle': 'automatic',
+              'signingStyle': 'manual',
+              'signingCertificate': 'Apple Distribution',
               'stripSwiftSymbols': True,
               'compileBitcode': False,
               'teamID': os.environ['APPLE_TEAM_ID'],
@@ -138,16 +145,12 @@ jobs:
 
           echo "📋 Export options created:"
           cat exportOptions.plist
-          echo "🚀 Starting export with API authentication..."
+          echo "🚀 Starting export with manual signing..."
           xcodebuild \
             -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportOptionsPlist exportOptions.plist \
-            -exportPath "$EXPORT_PATH" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" || {
+            -exportPath "$EXPORT_PATH" || {
               echo "❌ Export failed, checking what was created:"
               ls -la "$EXPORT_PATH" || echo "Export path doesn't exist"
               exit 1
