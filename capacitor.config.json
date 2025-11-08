@@ -4,14 +4,14 @@
   "webDir": "dist",
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 1000,
-      "launchAutoHide": true,
-      "backgroundColor": "#667eea",
+      "launchShowDuration": 0,
+      "launchAutoHide": false,
+      "backgroundColor": "#FF0000",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
-      "showSpinner": false,
-      "splashFullScreen": true,
-      "splashImmersive": true
+      "showSpinner": true,
+      "splashFullScreen": false,
+      "splashImmersive": false
     },
     "Camera": {
       "permissions": ["camera", "photos", "microphone"]
