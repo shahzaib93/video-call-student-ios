@@ -47,7 +47,7 @@ jobs:
       - name: Sync Capacitor
         run: |
           echo "🔄 Syncing Capacitor iOS..."
-          npx cap sync ios --no-build
+          npx cap sync ios
           echo ""
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
           cat ios/App/App/capacitor.config.json
