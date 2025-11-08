@@ -52,11 +52,24 @@
     <div id="root">
       <div class="loading-screen">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading Student App...</div>
+        <div class="loading-text" id="status">Testing iOS... Step 1</div>
       </div>
     </div>
     <!-- WebRTC Support -->
     <script>
+      // AGGRESSIVE ERROR DISPLAY FOR iOS
+      function updateStatus(msg) {
+        var el = document.getElementById('status');
+        if (el) {
+          el.innerHTML = msg;
+          console.log(msg);
+        }
+      }
+
+      updateStatus('Step 2: HTML loaded ✓');
+
+      setTimeout(function() { updateStatus('Step 3: JavaScript running ✓'); }, 100);
+
       console.log('🔧 Student: Initializing WebRTC polyfills...');
       
       // Crypto.randomUUID polyfill for older browsers
@@ -130,22 +143,24 @@
       }
       
       console.log('✅ Student: WebRTC polyfills initialized');
+      updateStatus('Step 4: WebRTC polyfills ready ✓');
 
       // Debug: Check if we're in Capacitor
       console.log('📱 Platform:', navigator.platform);
       console.log('📱 User Agent:', navigator.userAgent);
       console.log('📱 Is iOS:', /iPad|iPhone|iPod/.test(navigator.userAgent));
+      updateStatus('Step 5: Platform detected: ' + navigator.platform);
+
+      setTimeout(function() {
+        updateStatus('Step 6: Waiting for React...');
+      }, 500);
 
       // Show a visible message if scripts fail to load
       setTimeout(function() {
         var root = document.getElementById('root');
         if (root && root.children.length === 1 && root.children[0].className === 'loading-screen') {
           console.error('❌ App failed to load after 10 seconds');
-          var loadingText = document.querySelector('.loading-text');
-          if (loadingText) {
-            loadingText.innerHTML = 'Failed to load app<br><small>Check console for errors</small>';
-            loadingText.style.color = '#ff6b6b';
-          }
+          updateStatus('❌ React FAILED to load!<br><small>URL: ' + window.location.href + '</small>');
         }
       }, 10000);
     </script>

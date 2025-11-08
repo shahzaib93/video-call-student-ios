@@ -3,15 +3,13 @@
   "appName": "Video Call Student",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https",
-    "iosScheme": "capacitor",
+    "androidScheme": "http",
+    "iosScheme": "ionic",
     "cleartext": true,
-    "allowNavigation": ["*"],
-    "hostname": "localhost"
+    "allowNavigation": ["*"]
   },
   "ios": {
     "contentInset": "automatic",
-    "scheme": "capacitor",
     "limitsNavigationsToAppBoundDomains": false,
     "webContentsDebuggingEnabled": true
   },
