@@ -5,14 +5,23 @@ import App from './App';
 // import TestApp from './TestApp';
 
 // Add error boundary for debugging
+let errorCount = 0;
 window.addEventListener('error', (e) => {
   console.error('Global error:', e.error);
-  alert(`Error: ${e.error?.message || 'Unknown error'}`);
+  errorCount++;
+  if (errorCount <= 2) {
+    const msg = e.error?.message || e.message || 'Unknown error';
+    const stack = e.error?.stack ? '\n\nStack: ' + e.error.stack.substring(0, 200) : '';
+    alert(`iOS Error #${errorCount}:\n${msg}${stack}`);
+  }
 });
 
 window.addEventListener('unhandledrejection', (e) => {
   console.error('Unhandled promise rejection:', e.reason);
-  alert(`Promise error: ${e.reason}`);
+  errorCount++;
+  if (errorCount <= 2) {
+    alert(`iOS Promise Error #${errorCount}:\n${e.reason}`);
+  }
 });
 
 try {
