@@ -44,15 +44,19 @@ jobs:
           echo ""
           echo "✅ Build verification complete"
 
-      - name: Remove and recreate iOS platform
+      - name: Clean iOS build artifacts
         run: |
-          echo "🗑️ Completely removing iOS platform..."
-          rm -rf ios
-          echo "✅ iOS platform removed"
+          echo "🧹 Cleaning iOS build artifacts..."
+          rm -rf ios/App/App/public
+          rm -rf ios/App/App/capacitor.config.json
+          rm -rf ios/App/build
+          rm -rf ios/App/DerivedData
+          echo "✅ iOS cleaned"
 
-          echo "🆕 Adding fresh iOS platform..."
-          npx cap add ios
-          echo "✅ Fresh iOS platform added"
+      - name: Sync Capacitor
+        run: |
+          echo "🔄 Syncing Capacitor iOS..."
+          npx cap sync ios
           echo ""
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
           cat ios/App/App/capacitor.config.json
