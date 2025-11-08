@@ -38,7 +38,7 @@ cd ~
 openssl req -new -newkey rsa:2048 -nodes \
   -keyout ios_distribution.key \
   -out CertificateSigningRequest.certSigningRequest \
-  -subj "/CN=Video Call Student/C=US"
+  -subj "/CN=Tarteel-Student/C=US"
 
 echo "✅ Created CertificateSigningRequest.certSigningRequest"
 echo "📍 Location: $(pwd)/CertificateSigningRequest.certSigningRequest"
