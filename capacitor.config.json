@@ -3,7 +3,9 @@
   "appName": "Video Call Student",
   "webDir": "dist",
   "server": {
-    "androidScheme": "http"
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "cleartext": true
   },
   "plugins": {
     "SplashScreen": {
