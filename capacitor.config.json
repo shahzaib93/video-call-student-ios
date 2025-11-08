@@ -5,11 +5,16 @@
   "server": {
     "androidScheme": "https",
     "iosScheme": "capacitor",
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "scheme": "capacitor"
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2000,
+      "launchShowDuration": 1000,
       "launchAutoHide": true,
       "backgroundColor": "#667eea",
       "androidSplashResourceName": "splash",
