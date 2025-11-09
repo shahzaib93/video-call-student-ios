@@ -155,12 +155,23 @@
         updateStatus('Step 6: Waiting for React...');
       }, 500);
 
+      // Debug: Check if SystemJS is loaded
+      setTimeout(function() {
+        if (typeof System !== 'undefined') {
+          console.log('✅ SystemJS loader is available');
+          updateStatus('Step 7: SystemJS loaded ✓');
+        } else {
+          console.error('❌ SystemJS not loaded!');
+          updateStatus('❌ SystemJS missing!');
+        }
+      }, 1000);
+
       // Show a visible message if scripts fail to load
       setTimeout(function() {
         var root = document.getElementById('root');
         if (root && root.children.length === 1 && root.children[0].className === 'loading-screen') {
           console.error('❌ App failed to load after 10 seconds');
-          updateStatus('❌ React FAILED to load!<br><small>URL: ' + window.location.href + '</small>');
+          updateStatus('❌ React FAILED to load!<br><small>URL: ' + window.location.href + '</small><br><small>SystemJS: ' + (typeof System !== 'undefined' ? 'loaded' : 'missing') + '</small>');
         }
       }, 10000);
     </script>
