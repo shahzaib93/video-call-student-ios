@@ -3,7 +3,7 @@
   "appName": "Video Call Student",
   "webDir": "dist",
   "server": {
-    "iosScheme": "capacitor",
+    "iosScheme": "https",
     "androidScheme": "https"
   },
   "ios": {
