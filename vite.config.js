@@ -9,8 +9,7 @@ function fixScriptTags() {
     transformIndexHtml: {
       order: 'post',
       handler(html) {
-        console.log('🔧 Removing type="module" for iOS...');
-        html = html.replace(/\s*type="module"\s*/g, ' ');
+        console.log('🔧 Normalizing script tags for iOS...');
         html = html.replace(/\s*crossorigin\s*/g, ' ');
         html = html.replace(/<script\s+/g, '<script ');
         html = html.replace(/\s+>/g, '>');
