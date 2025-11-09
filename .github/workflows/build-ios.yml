@@ -70,6 +70,10 @@ jobs:
           npx cap add ios
           echo "✅ Fresh iOS created"
 
+          echo "📦 Syncing web assets to iOS..."
+          npx cap sync ios
+          echo "✅ Assets synced"
+
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
           cat ios/App/App/capacitor.config.json
           echo ""
