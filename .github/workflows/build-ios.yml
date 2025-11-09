@@ -48,8 +48,6 @@ jobs:
           echo "✅ Build verification complete"
 
       - name: Recreate iOS with proper permissions
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🗑️ Removing old broken iOS project..."
           rm -rf ios
@@ -59,14 +57,6 @@ jobs:
           npx cap add ios
           echo "✅ Fresh iOS created"
 
-          echo "📦 Committing fresh iOS to repository..."
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ios/
-          git diff --staged --quiet || git commit -m "AUTO: Fresh Capacitor 7 iOS platform (working WebView)"
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main || echo "Push may have failed, continuing..."
-          echo "✅ iOS project saved to repository"
-          echo ""
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
           cat ios/App/App/capacitor.config.json
           echo ""
@@ -84,6 +74,8 @@ jobs:
           fi
           echo ""
           echo "✅ Capacitor sync complete"
+          echo ""
+          echo "ℹ️  NOTE: iOS folder is NOT committed (gets recreated every build)"
 
       - name: Verify iOS project structure
         run: |
