@@ -4,6 +4,11 @@ import { HashRouter } from 'react-router-dom';
 import App from './App';
 // import TestApp from './TestApp';
 
+// Expose React globally for iOS debugging
+window.React = React;
+window.ReactDOM = ReactDOM;
+console.log('✅ React exposed globally:', typeof window.React);
+
 // Add error boundary for debugging - SHOW ERRORS ON SCREEN
 let errorCount = 0;
 let errorMessages = [];
@@ -78,11 +83,14 @@ function SafeApp() {
 }
 
 try {
+  console.log('🔧 Starting React app initialization...');
   const root = document.getElementById('root');
   if (!root) {
     throw new Error('Root element not found!');
   }
+  console.log('✅ Root element found');
 
+  console.log('🔧 Creating React root...');
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <HashRouter>
@@ -90,8 +98,9 @@ try {
       </HashRouter>
     </React.StrictMode>
   );
+  console.log('✅ React app rendered!');
 } catch (error) {
-  console.error('Failed to render app:', error);
+  console.error('❌ Failed to render app:', error);
   document.body.innerHTML = `
     <div style="padding: 20px; font-family: sans-serif; background: white; min-height: 100vh;">
       <h1 style="color: #e74c3c;">Fatal Error</h1>
