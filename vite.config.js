@@ -67,13 +67,14 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        format: 'iife',  // Self-executing function - no modules at all
-        name: 'TarteelApp',
-        inlineDynamicImports: true,  // Bundle everything into one file
-        entryFileNames: 'assets/app.js',  // Single output file
+        format: 'es',  // Back to ES modules but plugin will remove type="module"
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name].[ext]',
-        banner: '/* Tarteel Student App - IIFE Bundle for iOS */\nconsole.log("🚀 App bundle starting execution...");',
-        footer: 'console.log("✅ App bundle execution complete");'
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore']
+        }
       }
     }
   },
