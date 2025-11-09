@@ -24,6 +24,33 @@ window.addEventListener('unhandledrejection', (e) => {
   }
 });
 
+// Create a safe App wrapper that won't crash the entire app
+function SafeApp() {
+  const [error, setError] = React.useState(null);
+
+  if (error) {
+    return (
+      <div style={{padding: '20px', fontFamily: 'Arial', backgroundColor: '#fff', minHeight: '100vh'}}>
+        <h1 style={{color: '#e74c3c'}}>App Initialization Failed</h1>
+        <p><strong>Error:</strong> {error.message}</p>
+        <pre style={{background: '#f5f5f5', padding: '10px', overflow: 'auto', fontSize: '12px'}}>
+          {error.stack}
+        </pre>
+        <button onClick={() => window.location.reload()} style={{padding: '10px 20px', marginTop: '20px'}}>
+          Reload App
+        </button>
+      </div>
+    );
+  }
+
+  try {
+    return <App />;
+  } catch (err) {
+    setError(err);
+    return null;
+  }
+}
+
 try {
   const root = document.getElementById('root');
   if (!root) {
@@ -33,17 +60,18 @@ try {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <HashRouter>
-        <App />
+        <SafeApp />
       </HashRouter>
     </React.StrictMode>
   );
 } catch (error) {
   console.error('Failed to render app:', error);
   document.body.innerHTML = `
-    <div style="padding: 20px; font-family: sans-serif;">
-      <h1>App Failed to Load</h1>
-      <p style="color: red;">${error.message}</p>
-      <p>Please check the console for more details.</p>
+    <div style="padding: 20px; font-family: sans-serif; background: white; min-height: 100vh;">
+      <h1 style="color: #e74c3c;">Fatal Error</h1>
+      <p><strong>Error:</strong> ${error.message}</p>
+      <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${error.stack || 'No stack trace'}</pre>
+      <button onclick="window.location.reload()" style="padding: 10px 20px; margin-top: 20px;">Reload App</button>
     </div>
   `;
 }
