@@ -2,9 +2,20 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Custom plugin to remove crossorigin attribute from script tags for iOS WebView compatibility
+function removeCrossorigin() {
+  return {
+    name: 'remove-crossorigin',
+    transformIndexHtml(html) {
+      return html.replace(/ crossorigin/g, '');
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
-    react()
+    react(),
+    removeCrossorigin()
   ],
   base: './',
   build: {
@@ -15,13 +26,12 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        format: 'es',
+        format: 'es',  // Keep ES format but remove crossorigin attribute
         manualChunks: {
           vendor: ['react', 'react-dom'],
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
           material: ['@mui/material', '@emotion/react', '@emotion/styled']
-        },
-        inlineDynamicImports: false
+        }
       }
     }
   },
