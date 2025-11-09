@@ -2,22 +2,34 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// Plugin to remove type="module" from script tags for iOS compatibility
-function removeModuleType() {
+// Plugin to fix script tags for iOS compatibility
+function fixScriptTags() {
   return {
-    name: 'remove-module-type',
+    name: 'fix-script-tags',
     enforce: 'post',  // Run AFTER Vite's built-in transforms
     transformIndexHtml: {
       order: 'post',
       handler(html) {
-        console.log('🔧 Removing type="module" from script tags...');
-        // Remove type="module" and crossorigin from all script tags
-        const result = html
-          .replace(/<script type="module" crossorigin/g, '<script')
-          .replace(/<script type="module"/g, '<script')
-          .replace(/crossorigin/g, '');
-        console.log('✅ Script tags cleaned for iOS compatibility');
-        return result;
+        console.log('🔧 Fixing script tags for iOS compatibility...');
+
+        // Extract script tags from head
+        let scriptTag = '';
+        html = html.replace(/<script[^>]*src="\.\/assets\/[^"]*\.js"[^>]*><\/script>/g, (match) => {
+          scriptTag = match;
+          return ''; // Remove from head
+        });
+
+        // Clean the script tag (remove type="module" and crossorigin)
+        scriptTag = scriptTag
+          .replace(/type="module"\s*/g, '')
+          .replace(/crossorigin\s*/g, '')
+          .replace(/\s+>/g, '>'); // Clean up extra spaces
+
+        // Move script to end of body (before </body>)
+        html = html.replace('</body>', `  ${scriptTag}\n  </body>`);
+
+        console.log('✅ Script tag moved to end of body');
+        return html;
       }
     }
   };
@@ -26,7 +38,7 @@ function removeModuleType() {
 export default defineConfig({
   plugins: [
     react(),
-    removeModuleType()
+    fixScriptTags()
   ],
   base: './',
   build: {
