@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script src="https://cdn.jsdelivr.net/npm/systemjs@6.15.1/dist/s.min.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -48,19 +47,7 @@
       font-size: 18px;
     }
   </style>
-    <script>
-          System.import("./assets/index-82323fa6.js").then(function() {
-            console.log('✅ SystemJS: Successfully loaded ./assets/index-82323fa6.js');
-          }).catch(function(err) {
-            console.error('❌ SystemJS import failed:', err);
-            var statusEl = document.getElementById('status');
-            if (statusEl) {
-              statusEl.innerHTML = '❌ SystemJS import error!<br><small>' + err.message + '</small>';
-            }
-          });
-        </script>
-    
-    
+    <script type="module" crossorigin src="./assets/app.js"></script>
   </head>
   <body>
     <div id="root">
