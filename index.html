@@ -66,6 +66,23 @@
         }
       }
 
+      // Catch resource load failures (no stack trace from WKWebView)
+      window.addEventListener('error', function(event) {
+        if (!event.error && event.target) {
+          var tag = event.target.tagName;
+          if (tag === 'SCRIPT') {
+            var src = event.target.getAttribute('src') || 'inline';
+            console.error('❌ Script failed to load:', src, event);
+            updateStatus('❌ Script failed: ' + src);
+          }
+          if (tag === 'LINK') {
+            var href = event.target.getAttribute('href') || 'inline';
+            console.error('❌ Stylesheet failed to load:', href, event);
+            updateStatus('❌ Stylesheet failed: ' + href);
+          }
+        }
+      }, true);
+
       updateStatus('Step 2: HTML loaded ✓');
 
       setTimeout(function() { updateStatus('Step 3: JavaScript running ✓'); }, 100);

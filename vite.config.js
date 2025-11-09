@@ -2,31 +2,29 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// DISABLED - Testing without plugin
-// function fixScriptTags() {
-//   return {
-//     name: 'fix-script-tags',
-//     enforce: 'post',
-//     transformIndexHtml: {
-//       order: 'post',
-//       handler(html) {
-//         console.log('🔧 Removing type="module" for iOS...');
-//         // Simply remove type="module" from all script tags
-//         html = html.replace(/\s*type="module"\s*/g, ' ');
-//         html = html.replace(/\s*crossorigin\s*/g, ' ');
-//         html = html.replace(/<script\s+/g, '<script ');
-//         html = html.replace(/\s+>/g, '>');
-//         console.log('✅ Script tags fixed');
-//         return html;
-//       }
-//     }
-//   };
-// }
+function fixScriptTags() {
+  return {
+    name: 'fix-script-tags',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        console.log('🔧 Removing type="module" for iOS...');
+        html = html.replace(/\s*type="module"\s*/g, ' ');
+        html = html.replace(/\s*crossorigin\s*/g, ' ');
+        html = html.replace(/<script\s+/g, '<script ');
+        html = html.replace(/\s+>/g, '>');
+        console.log('✅ Script tags fixed');
+        return html;
+      }
+    }
+  };
+}
 
 export default defineConfig({
   plugins: [
-    react()
-    // fixScriptTags() - DISABLED for testing
+    react(),
+    fixScriptTags()
   ],
   base: '',  // Empty base for capacitor:// scheme compatibility
   build: {
