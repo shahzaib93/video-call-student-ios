@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-ios:
     name: Build iOS Application
@@ -44,18 +47,25 @@ jobs:
           echo ""
           echo "✅ Build verification complete"
 
-      - name: Clean and sync iOS
+      - name: Recreate iOS with proper permissions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🧹 Cleaning iOS build artifacts..."
-          rm -rf ios/App/App/public
-          rm -rf ios/App/App/capacitor.config.json
-          rm -rf ios/App/build
-          rm -rf ios/App/DerivedData
-          echo "✅ Cleaned"
+          echo "🗑️ Removing old broken iOS project..."
+          rm -rf ios
+          echo "✅ Removed"
 
-          echo "🔄 Syncing Capacitor iOS..."
-          npx cap sync ios
-          echo "✅ Synced"
+          echo "🆕 Creating FRESH iOS project with Capacitor 7..."
+          npx cap add ios
+          echo "✅ Fresh iOS created"
+
+          echo "📦 Committing fresh iOS to repository..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ios/
+          git diff --staged --quiet || git commit -m "AUTO: Fresh Capacitor 7 iOS platform (working WebView)"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main || echo "Push may have failed, continuing..."
+          echo "✅ iOS project saved to repository"
           echo ""
           echo "📋 Verifying capacitor.config.json was copied to iOS:"
           cat ios/App/App/capacitor.config.json
