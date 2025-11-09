@@ -2,9 +2,23 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Plugin to remove type="module" from script tags for iOS compatibility
+function removeModuleType() {
+  return {
+    name: 'remove-module-type',
+    transformIndexHtml(html) {
+      // Remove type="module" and crossorigin from all script tags
+      return html
+        .replace(/<script type="module" crossorigin/g, '<script')
+        .replace(/<script type="module"/g, '<script');
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
-    react()
+    react(),
+    removeModuleType()
   ],
   base: './',
   build: {
