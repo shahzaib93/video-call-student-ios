@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import legacy from '@vitejs/plugin-legacy';
 import path from 'path';
 
 function fixScriptTags() {
@@ -23,6 +24,12 @@ function fixScriptTags() {
 export default defineConfig({
   plugins: [
     react(),
+    legacy({
+      targets: ['defaults', 'safari >= 11'],
+      modernPolyfills: true,
+      renderLegacyChunks: true,
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime']
+    }),
     fixScriptTags()
   ],
   base: '',  // Empty base for capacitor:// scheme compatibility
