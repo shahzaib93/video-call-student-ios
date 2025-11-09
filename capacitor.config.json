@@ -3,11 +3,9 @@
   "appName": "Video Call Student",
   "webDir": "dist",
   "server": {
-    "iosScheme": "https",
     "androidScheme": "https"
   },
   "ios": {
-    "scheme": "https",
     "contentInset": "never",
     "webContentsDebuggingEnabled": true,
     "allowsLinkPreview": false,

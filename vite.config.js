@@ -2,58 +2,31 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// Plugin to fix script tags for iOS compatibility
-function fixScriptTags() {
-  return {
-    name: 'fix-script-tags',
-    enforce: 'post',  // Run AFTER Vite's built-in transforms
-    transformIndexHtml: {
-      order: 'post',
-      handler(html) {
-        console.log('🔧 Fixing script tags for iOS compatibility...');
-
-        // Extract script tags from head
-        let scriptTag = '';
-        let scriptSrc = '';
-        html = html.replace(/<script[^>]*src="(\.\/assets\/[^"]*\.js)"[^>]*><\/script>/g, (match, src) => {
-          scriptSrc = src;
-          scriptTag = match;
-          return ''; // Remove from head
-        });
-
-        // Clean the script tag and add error handling
-        scriptTag = scriptTag
-          .replace(/type="module"\s*/g, '')
-          .replace(/crossorigin\s*/g, '')
-          .replace(/\s+>/g, '>') // Clean up extra spaces
-          .replace('>', ' onerror="updateStatus(\'❌ Script failed to load: ' + scriptSrc + '\')">')
-
-        // Add inline script before the main script to detect if it loads
-        const inlineScript = `
-    <script>
-      console.log('🔧 About to load app bundle: ${scriptSrc}');
-      window.addEventListener('error', function(e) {
-        if (e.filename && e.filename.includes('app.js')) {
-          console.error('❌ Error in app.js:', e.message, e.lineno);
-          updateStatus('❌ Error in app.js: ' + e.message);
-        }
-      }, true);
-    </script>`;
-
-        // Move scripts to end of body (before </body>)
-        html = html.replace('</body>', `${inlineScript}\n  ${scriptTag}\n  </body>`);
-
-        console.log('✅ Script tag moved to end of body with error handling');
-        return html;
-      }
-    }
-  };
-}
+// DISABLED - Testing without plugin
+// function fixScriptTags() {
+//   return {
+//     name: 'fix-script-tags',
+//     enforce: 'post',
+//     transformIndexHtml: {
+//       order: 'post',
+//       handler(html) {
+//         console.log('🔧 Removing type="module" for iOS...');
+//         // Simply remove type="module" from all script tags
+//         html = html.replace(/\s*type="module"\s*/g, ' ');
+//         html = html.replace(/\s*crossorigin\s*/g, ' ');
+//         html = html.replace(/<script\s+/g, '<script ');
+//         html = html.replace(/\s+>/g, '>');
+//         console.log('✅ Script tags fixed');
+//         return html;
+//       }
+//     }
+//   };
+// }
 
 export default defineConfig({
   plugins: [
-    react(),
-    fixScriptTags()
+    react()
+    // fixScriptTags() - DISABLED for testing
   ],
   base: '',  // Empty base for capacitor:// scheme compatibility
   build: {
@@ -68,7 +41,7 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        format: 'es',  // Back to ES modules but plugin will remove type="module"
+        format: 'es',  // ES modules work fine on iOS 16+
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name].[ext]',

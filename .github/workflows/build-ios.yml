@@ -40,10 +40,23 @@ jobs:
       - name: Verify build output
         run: |
           echo "📦 Checking dist folder contents:"
-          ls -la dist/
+          ls -lh dist/
           echo ""
-          echo "📄 Checking dist/index.html exists:"
-          cat dist/index.html | head -20
+          echo "📄 Checking dist/assets folder:"
+          ls -lh dist/assets/ | head -20
+          echo ""
+          echo "📄 Checking dist/index.html:"
+          cat dist/index.html
+          echo ""
+          echo "🔍 Checking if bundles are empty:"
+          for file in dist/assets/*.js; do
+            size=$(wc -c < "$file")
+            echo "$file: $size bytes"
+            if [ $size -lt 1000 ]; then
+              echo "❌ WARNING: File is suspiciously small!"
+              cat "$file"
+            fi
+          done
           echo ""
           echo "✅ Build verification complete"
 
