@@ -12,10 +12,20 @@ function systemJSPlugin() {
         '<head>',
         '<head>\n    <script src="https://cdn.jsdelivr.net/npm/systemjs@6.15.1/dist/s.min.js"></script>'
       );
-      // Convert module scripts to SystemJS imports
+      // Convert module scripts to SystemJS imports with error handling
       html = html.replace(
         /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
-        '<script>System.import("$1")</script>'
+        `<script>
+          System.import("$1").then(function() {
+            console.log('✅ SystemJS: Successfully loaded $1');
+          }).catch(function(err) {
+            console.error('❌ SystemJS import failed:', err);
+            var statusEl = document.getElementById('status');
+            if (statusEl) {
+              statusEl.innerHTML = '❌ SystemJS import error!<br><small>' + err.message + '</small>';
+            }
+          });
+        </script>`
       );
       // Remove modulepreload hints (not needed for SystemJS)
       html = html.replace(
