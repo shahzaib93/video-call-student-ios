@@ -4,24 +4,50 @@ import { HashRouter } from 'react-router-dom';
 import App from './App';
 // import TestApp from './TestApp';
 
-// Add error boundary for debugging
+// Add error boundary for debugging - SHOW ERRORS ON SCREEN
 let errorCount = 0;
+let errorMessages = [];
+
+function showErrorOnScreen() {
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `
+      <div style="padding: 20px; background: white; min-height: 100vh; font-family: Arial;">
+        <h1 style="color: #e74c3c;">JavaScript Errors Detected (${errorMessages.length})</h1>
+        ${errorMessages.map((msg, i) => `
+          <div style="margin: 20px 0; padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">
+            <h3>Error #${i + 1}</h3>
+            <pre style="white-space: pre-wrap; font-size: 12px;">${msg}</pre>
+          </div>
+        `).join('')}
+        <button onclick="window.location.reload()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          Reload App
+        </button>
+      </div>
+    `;
+  }
+}
+
 window.addEventListener('error', (e) => {
   console.error('Global error:', e.error);
   errorCount++;
-  if (errorCount <= 2) {
-    const msg = e.error?.message || e.message || 'Unknown error';
-    const stack = e.error?.stack ? '\n\nStack: ' + e.error.stack.substring(0, 200) : '';
-    alert(`iOS Error #${errorCount}:\n${msg}${stack}`);
-  }
+  const msg = e.error?.message || e.message || 'Unknown error';
+  const stack = e.error?.stack || 'No stack trace';
+  const file = e.filename || 'Unknown file';
+  const line = e.lineno || '?';
+
+  errorMessages.push(`Message: ${msg}\nFile: ${file}:${line}\n\nStack:\n${stack}`);
+
+  setTimeout(() => showErrorOnScreen(), 500);
 });
 
 window.addEventListener('unhandledrejection', (e) => {
   console.error('Unhandled promise rejection:', e.reason);
   errorCount++;
-  if (errorCount <= 2) {
-    alert(`iOS Promise Error #${errorCount}:\n${e.reason}`);
-  }
+
+  errorMessages.push(`Promise Rejection:\n${e.reason}\n\n${e.reason?.stack || ''}`);
+
+  setTimeout(() => showErrorOnScreen(), 500);
 });
 
 // Create a safe App wrapper that won't crash the entire app
