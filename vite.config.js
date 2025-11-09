@@ -14,21 +14,36 @@ function fixScriptTags() {
 
         // Extract script tags from head
         let scriptTag = '';
-        html = html.replace(/<script[^>]*src="\.\/assets\/[^"]*\.js"[^>]*><\/script>/g, (match) => {
+        let scriptSrc = '';
+        html = html.replace(/<script[^>]*src="(\.\/assets\/[^"]*\.js)"[^>]*><\/script>/g, (match, src) => {
+          scriptSrc = src;
           scriptTag = match;
           return ''; // Remove from head
         });
 
-        // Clean the script tag (remove type="module" and crossorigin)
+        // Clean the script tag and add error handling
         scriptTag = scriptTag
           .replace(/type="module"\s*/g, '')
           .replace(/crossorigin\s*/g, '')
-          .replace(/\s+>/g, '>'); // Clean up extra spaces
+          .replace(/\s+>/g, '>') // Clean up extra spaces
+          .replace('>', ' onerror="updateStatus(\'❌ Script failed to load: ' + scriptSrc + '\')">')
 
-        // Move script to end of body (before </body>)
-        html = html.replace('</body>', `  ${scriptTag}\n  </body>`);
+        // Add inline script before the main script to detect if it loads
+        const inlineScript = `
+    <script>
+      console.log('🔧 About to load app bundle: ${scriptSrc}');
+      window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('app.js')) {
+          console.error('❌ Error in app.js:', e.message, e.lineno);
+          updateStatus('❌ Error in app.js: ' + e.message);
+        }
+      }, true);
+    </script>`;
 
-        console.log('✅ Script tag moved to end of body');
+        // Move scripts to end of body (before </body>)
+        html = html.replace('</body>', `${inlineScript}\n  ${scriptTag}\n  </body>`);
+
+        console.log('✅ Script tag moved to end of body with error handling');
         return html;
       }
     }
@@ -56,7 +71,9 @@ export default defineConfig({
         name: 'TarteelApp',
         inlineDynamicImports: true,  // Bundle everything into one file
         entryFileNames: 'assets/app.js',  // Single output file
-        assetFileNames: 'assets/[name].[ext]'
+        assetFileNames: 'assets/[name].[ext]',
+        banner: '/* Tarteel Student App - IIFE Bundle for iOS */\nconsole.log("🚀 App bundle starting execution...");',
+        footer: 'console.log("✅ App bundle execution complete");'
       }
     }
   },
