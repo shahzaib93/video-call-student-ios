@@ -83,6 +83,14 @@
         }
       }, true);
 
+      fetch('assets/index-4703df5e.js')
+        .then(r => updateStatus('Asset index-4703df5e.js: ' + r.status))
+        .catch(err => updateStatus('Asset index-4703df5e.js failed: ' + err.message));
+
+      fetch('assets/vendor-59437187.js')
+        .then(r => updateStatus('Asset vendor-59437187.js: ' + r.status))
+        .catch(err => updateStatus('Asset vendor-59437187.js failed: ' + err.message));
+
       updateStatus('Step 2: HTML loaded ✓');
 
       setTimeout(function() { updateStatus('Step 3: JavaScript running ✓'); }, 100);
