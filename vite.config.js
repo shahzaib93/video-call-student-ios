@@ -6,11 +6,19 @@ import path from 'path';
 function removeModuleType() {
   return {
     name: 'remove-module-type',
-    transformIndexHtml(html) {
-      // Remove type="module" and crossorigin from all script tags
-      return html
-        .replace(/<script type="module" crossorigin/g, '<script')
-        .replace(/<script type="module"/g, '<script');
+    enforce: 'post',  // Run AFTER Vite's built-in transforms
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        console.log('🔧 Removing type="module" from script tags...');
+        // Remove type="module" and crossorigin from all script tags
+        const result = html
+          .replace(/<script type="module" crossorigin/g, '<script')
+          .replace(/<script type="module"/g, '<script')
+          .replace(/crossorigin/g, '');
+        console.log('✅ Script tags cleaned for iOS compatibility');
+        return result;
+      }
     }
   };
 }
