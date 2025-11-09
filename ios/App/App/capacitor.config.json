@@ -2,19 +2,16 @@
 	"appId": "com.videocall.student",
 	"appName": "Video Call Student",
 	"webDir": "dist",
-	"server": {
-		"androidScheme": "http"
-	},
 	"plugins": {
 		"SplashScreen": {
-			"launchShowDuration": 2000,
-			"launchAutoHide": true,
-			"backgroundColor": "#667eea",
+			"launchShowDuration": 0,
+			"launchAutoHide": false,
+			"backgroundColor": "#FF0000",
 			"androidSplashResourceName": "splash",
 			"androidScaleType": "CENTER_CROP",
-			"showSpinner": false,
-			"splashFullScreen": true,
-			"splashImmersive": true
+			"showSpinner": true,
+			"splashFullScreen": false,
+			"splashImmersive": false
 		},
 		"Camera": {
 			"permissions": [
@@ -43,5 +40,9 @@
 			"android.permission.ACCESS_NETWORK_STATE",
 			"android.permission.INTERNET"
 		]
-	}
+	},
+	"packageClassList": [
+		"LocalNotificationsPlugin",
+		"PushNotificationsPlugin"
+	]
 }
