@@ -55,12 +55,13 @@ export default defineConfig({
     react(),
     fixScriptTags()
   ],
-  base: './',
+  base: '',  // Empty base for capacitor:// scheme compatibility
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     target: ['es2015', 'safari11'],  // Target older iOS Safari
-    minify: false,  // Disable minification for better compatibility
+    minify: 'terser',  // Re-enable minification
+    modulePreload: false,  // Don't preload modules
     sourcemap: false,
     commonjsOptions: {
       transformMixedEsModules: true  // Handle mixed ES/CommonJS modules
