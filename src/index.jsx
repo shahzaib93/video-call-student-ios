@@ -4,10 +4,19 @@ import { HashRouter } from 'react-router-dom';
 import App from './App';
 // import TestApp from './TestApp';
 
+// Helper to show messages on screen (iOS debugging)
+function showStatus(msg) {
+  console.log(msg);
+  const el = document.getElementById('status');
+  if (el) {
+    el.innerHTML = msg;
+  }
+}
+
 // Expose React globally for iOS debugging
 window.React = React;
 window.ReactDOM = ReactDOM;
-console.log('✅ React exposed globally:', typeof window.React);
+showStatus('✅ React imported and exposed globally');
 
 // Add error boundary for debugging - SHOW ERRORS ON SCREEN
 let errorCount = 0;
@@ -83,14 +92,13 @@ function SafeApp() {
 }
 
 try {
-  console.log('🔧 Starting React app initialization...');
+  showStatus('🔧 Starting React initialization...');
   const root = document.getElementById('root');
   if (!root) {
     throw new Error('Root element not found!');
   }
-  console.log('✅ Root element found');
+  showStatus('✅ Root element found, creating React root...');
 
-  console.log('🔧 Creating React root...');
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <HashRouter>
@@ -98,15 +106,18 @@ try {
       </HashRouter>
     </React.StrictMode>
   );
-  console.log('✅ React app rendered!');
+  showStatus('✅ React app rendered successfully!');
 } catch (error) {
   console.error('❌ Failed to render app:', error);
-  document.body.innerHTML = `
-    <div style="padding: 20px; font-family: sans-serif; background: white; min-height: 100vh;">
-      <h1 style="color: #e74c3c;">Fatal Error</h1>
-      <p><strong>Error:</strong> ${error.message}</p>
-      <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${error.stack || 'No stack trace'}</pre>
-      <button onclick="window.location.reload()" style="padding: 10px 20px; margin-top: 20px;">Reload App</button>
-    </div>
-  `;
+  showStatus('❌ FATAL: ' + error.message);
+  setTimeout(() => {
+    document.body.innerHTML = `
+      <div style="padding: 20px; font-family: sans-serif; background: white; min-height: 100vh;">
+        <h1 style="color: #e74c3c;">Fatal Error in React Initialization</h1>
+        <p><strong>Error:</strong> ${error.message}</p>
+        <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${error.stack || 'No stack trace'}</pre>
+        <button onclick="window.location.reload()" style="padding: 10px 20px; margin-top: 20px;">Reload App</button>
+      </div>
+    `;
+  }, 1000);
 }
