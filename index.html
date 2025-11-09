@@ -155,23 +155,37 @@
         updateStatus('Step 6: Waiting for React...');
       }, 500);
 
-      // Debug: Check if SystemJS is loaded
+      // Debug: Check if app bundle loaded
       setTimeout(function() {
-        if (typeof System !== 'undefined') {
-          console.log('✅ SystemJS loader is available');
-          updateStatus('Step 7: SystemJS loaded ✓');
+        if (typeof window.TarteelApp !== 'undefined') {
+          console.log('✅ TarteelApp IIFE bundle loaded');
+          updateStatus('Step 7: App bundle loaded ✓');
         } else {
-          console.error('❌ SystemJS not loaded!');
-          updateStatus('❌ SystemJS missing!');
+          console.error('❌ TarteelApp bundle not loaded!');
+          updateStatus('Step 7: Waiting for app bundle...');
         }
       }, 1000);
+
+      // Check React initialization
+      setTimeout(function() {
+        if (typeof React !== 'undefined') {
+          console.log('✅ React is available');
+          updateStatus('Step 8: React loaded ✓');
+        } else {
+          console.error('❌ React not available');
+          updateStatus('Step 8: React missing');
+        }
+      }, 2000);
 
       // Show a visible message if scripts fail to load
       setTimeout(function() {
         var root = document.getElementById('root');
         if (root && root.children.length === 1 && root.children[0].className === 'loading-screen') {
           console.error('❌ App failed to load after 10 seconds');
-          updateStatus('❌ React FAILED to load!<br><small>URL: ' + window.location.href + '</small><br><small>SystemJS: ' + (typeof System !== 'undefined' ? 'loaded' : 'missing') + '</small>');
+          var msg = '❌ React FAILED to load!<br><small>URL: ' + window.location.href + '</small>';
+          msg += '<br><small>TarteelApp: ' + (typeof window.TarteelApp !== 'undefined' ? 'loaded' : 'missing') + '</small>';
+          msg += '<br><small>React: ' + (typeof React !== 'undefined' ? 'loaded' : 'missing') + '</small>';
+          updateStatus(msg);
         }
       }, 10000);
     </script>
