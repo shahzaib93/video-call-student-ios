@@ -2,12 +2,27 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// Custom plugin to remove crossorigin attribute from script tags for iOS WebView compatibility
-function removeCrossorigin() {
+// Custom plugin to inject SystemJS loader and convert module scripts for iOS compatibility
+function systemJSPlugin() {
   return {
-    name: 'remove-crossorigin',
+    name: 'systemjs-plugin',
     transformIndexHtml(html) {
-      return html.replace(/ crossorigin/g, '');
+      // Add SystemJS loader script before any module scripts
+      html = html.replace(
+        '<head>',
+        '<head>\n    <script src="https://cdn.jsdelivr.net/npm/systemjs@6.15.1/dist/s.min.js"></script>'
+      );
+      // Convert module scripts to SystemJS imports
+      html = html.replace(
+        /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
+        '<script>System.import("$1")</script>'
+      );
+      // Remove modulepreload hints (not needed for SystemJS)
+      html = html.replace(
+        /<link rel="modulepreload"[^>]*>/g,
+        ''
+      );
+      return html;
     }
   };
 }
@@ -15,22 +30,21 @@ function removeCrossorigin() {
 export default defineConfig({
   plugins: [
     react(),
-    removeCrossorigin()
+    systemJSPlugin()
   ],
   base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     target: 'es2015',
-    minify: 'terser',
+    minify: false,  // Disable minification to speed up build
     sourcemap: false,
     rollupOptions: {
       output: {
-        format: 'es',  // Keep ES format but remove crossorigin attribute
+        format: 'system',  // Use SystemJS format for better iOS compatibility
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-          material: ['@mui/material', '@emotion/react', '@emotion/styled']
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore']
         }
       }
     }
