@@ -2,6 +2,16 @@
   "appId": "com.videocall.student",
   "appName": "Video Call Student",
   "webDir": "dist",
+  "server": {
+    "iosScheme": "capacitor",
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "never",
+    "webContentsDebuggingEnabled": true,
+    "allowsLinkPreview": false,
+    "limitsNavigationsToAppBoundDomains": false
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 0,

@@ -15,8 +15,13 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        format: 'iife',  // Changed from 'es' to 'iife' - avoids CORS issues on iOS
-        inlineDynamicImports: true  // Inline all imports into single file
+        format: 'es',
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          material: ['@mui/material', '@emotion/react', '@emotion/styled']
+        },
+        inlineDynamicImports: false
       }
     }
   },
