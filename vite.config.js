@@ -2,60 +2,27 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// Custom plugin to inject SystemJS loader and convert module scripts for iOS compatibility
-function systemJSPlugin() {
-  return {
-    name: 'systemjs-plugin',
-    transformIndexHtml(html) {
-      // Add SystemJS loader script before any module scripts
-      html = html.replace(
-        '<head>',
-        '<head>\n    <script src="https://cdn.jsdelivr.net/npm/systemjs@6.15.1/dist/s.min.js"></script>'
-      );
-      // Convert module scripts to SystemJS imports with error handling
-      html = html.replace(
-        /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
-        `<script>
-          System.import("$1").then(function() {
-            console.log('✅ SystemJS: Successfully loaded $1');
-          }).catch(function(err) {
-            console.error('❌ SystemJS import failed:', err);
-            var statusEl = document.getElementById('status');
-            if (statusEl) {
-              statusEl.innerHTML = '❌ SystemJS import error!<br><small>' + err.message + '</small>';
-            }
-          });
-        </script>`
-      );
-      // Remove modulepreload hints (not needed for SystemJS)
-      html = html.replace(
-        /<link rel="modulepreload"[^>]*>/g,
-        ''
-      );
-      return html;
-    }
-  };
-}
-
 export default defineConfig({
   plugins: [
-    react(),
-    systemJSPlugin()
+    react()
   ],
   base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    target: 'es2015',
-    minify: false,  // Disable minification to speed up build
+    target: ['es2015', 'safari11'],  // Target older iOS Safari
+    minify: false,  // Disable minification for better compatibility
     sourcemap: false,
+    commonjsOptions: {
+      transformMixedEsModules: true  // Handle mixed ES/CommonJS modules
+    },
     rollupOptions: {
       output: {
-        format: 'system',  // Use SystemJS format for better iOS compatibility
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore']
-        }
+        format: 'iife',  // Self-executing function - no modules at all
+        name: 'TarteelApp',
+        inlineDynamicImports: true,  // Bundle everything into one file
+        entryFileNames: 'assets/app.js',  // Single output file
+        assetFileNames: 'assets/[name].[ext]'
       }
     }
   },
