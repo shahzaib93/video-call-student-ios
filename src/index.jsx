@@ -69,6 +69,18 @@ function SafeApp() {
 // Prevent multiple executions
 if (window.__REACT_APP_INITIALIZED__) {
   console.warn('⚠️ React already initialized, skipping duplicate render');
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `
+      <div style="padding: 20px; font-family: sans-serif; background: #fff3cd; min-height: 100vh; border-left: 4px solid #ffc107;">
+        <h1 style="color: #856404;">⚠️ Duplicate Initialization Prevented</h1>
+        <p><strong>React is already running.</strong> The initialization guard prevented a duplicate render.</p>
+        <p>If you see this message, it means the module script executed twice, but the guard worked correctly.</p>
+        <p>The app should already be visible. If not, try reloading.</p>
+        <button onclick="window.location.reload()" style="padding: 12px 24px; margin-top: 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">Reload App</button>
+      </div>
+    `;
+  }
 } else {
   window.__REACT_APP_INITIALIZED__ = true;
 
@@ -80,9 +92,21 @@ if (window.__REACT_APP_INITIALIZED__) {
     throw new Error('Root element not found!');
   }
 
-  // Clear all HTML immediately
-  console.log('🧹 Clearing HTML placeholder');
-  root.innerHTML = '';
+  // Keep loading screen visible, show status
+  console.log('🎬 Preparing React initialization');
+  root.innerHTML = `
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #667eea; display: flex; align-items: center; justify-content: center; flex-direction: column; font-family: Arial, sans-serif; color: white;">
+      <div style="width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+      <div style="margin-top: 20px; font-size: 16px;" id="status">Initializing React...</div>
+      <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;" id="substatus">Please wait</div>
+    </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  `;
 
   // Initialize render state
   window.StudentAppRenderState = {
@@ -91,11 +115,29 @@ if (window.__REACT_APP_INITIALIZED__) {
     lastError: null
   };
 
+  // Failsafe: If React doesn't render within 5 seconds, show error
+  const failsafeTimeout = setTimeout(() => {
+    if (!window.StudentAppRenderState.renderSucceeded) {
+      console.error('❌ React failed to render within 5 seconds');
+      root.innerHTML = `
+        <div style="padding: 20px; font-family: sans-serif; background: #fff; min-height: 100vh;">
+          <h1 style="color: #e74c3c;">❌ React Render Timeout</h1>
+          <p><strong>Issue:</strong> React did not render within 5 seconds</p>
+          <p>Last error: ${window.StudentAppRenderState.lastError || 'None captured'}</p>
+          <p>Check console logs for more details</p>
+          <button onclick="window.location.reload()" style="padding: 12px 24px; margin-top: 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">Reload App</button>
+        </div>
+      `;
+    }
+  }, 5000);
+
   try {
     console.log('⚛️ Creating React root');
+    showStatus('Creating React root...');
     const reactRoot = ReactDOM.createRoot(root);
 
     console.log('⚛️ Rendering App component');
+    showStatus('Rendering App component...');
     reactRoot.render(
       <React.StrictMode>
         <HashRouter>
@@ -104,9 +146,12 @@ if (window.__REACT_APP_INITIALIZED__) {
       </React.StrictMode>
     );
 
+    // Mark as succeeded and clear failsafe
     window.StudentAppRenderState.renderSucceeded = true;
+    clearTimeout(failsafeTimeout);
     console.log('✅ React render initiated successfully');
   } catch (error) {
+    clearTimeout(failsafeTimeout);
     console.error('❌ FATAL React render error:', error);
     window.StudentAppRenderState.lastError = error?.message || String(error);
 
