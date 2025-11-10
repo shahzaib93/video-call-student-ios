@@ -866,11 +866,20 @@ function App() {
       hasCriticalError,
       logCount: debugLogs.length
     });
+
+    let platformName = 'unknown';
+    try {
+      platformName = Capacitor.getPlatform();
+    } catch (e) {
+      console.error('Failed to get platform:', e);
+    }
+
     return (
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
+        width: '100vw',
         backgroundColor: '#667eea',
         color: 'white',
         position: 'fixed',
@@ -880,7 +889,9 @@ function App() {
         bottom: 0,
         zIndex: 10000,
         overflow: 'hidden',
-        fontFamily: 'Arial, sans-serif'
+        fontFamily: 'Arial, sans-serif',
+        margin: 0,
+        padding: 0
       }}>
         {/* Main status at top */}
         <div style={{ padding: '24px', textAlign: 'center', flexShrink: 0 }}>
@@ -894,7 +905,7 @@ function App() {
             {initStatus}
           </div>
           <div style={{fontSize: '11px', opacity: 0.7, fontFamily: 'monospace'}}>
-            Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'} | {Capacitor.getPlatform()}
+            Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'} | {platformName}
             {hasCriticalError && <div style={{color: '#ff6b6b', marginTop: '5px'}}>⚠️ Errors detected - screen locked</div>}
           </div>
         </div>
@@ -1002,10 +1013,12 @@ function App() {
     );
   }
 
+  console.log('[StudentApp] Render branch - MAIN APP', { configReady, loading, isAuthenticated, appError, user: !!user });
   return (
     <ThemeProvider theme={modernTheme}>
       <CssBaseline />
-      <CacheProvider apiClient={null}>
+      <div style={{minHeight: '100vh', backgroundColor: '#f5f5f5'}}>
+        <CacheProvider apiClient={null}>
         <Routes>
           <Route path="/*" element={
             <ModernLayout user={user} onLogout={handleLogout}>
@@ -1066,7 +1079,8 @@ function App() {
             {callToast.message}
           </Alert>
         </Snackbar>
-      </CacheProvider>
+        </CacheProvider>
+      </div>
     </ThemeProvider>
   );
 }
