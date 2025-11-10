@@ -139,47 +139,13 @@ if (window.__REACT_APP_INITIALIZED__) {
     console.log('⚛️ Rendering App component');
     showStatus('Rendering App component...');
 
-    // TEMPORARY: Render simple test UI instead of full app to isolate the issue
+    // Render the full app directly
     reactRoot.render(
-      <div style={{padding: '40px', fontFamily: 'Arial', backgroundColor: '#10b981', minHeight: '100vh', color: 'white'}}>
-        <h1>✅ React Rendered Successfully!</h1>
-        <p>If you see this green screen, React is working!</p>
-        <p>Build time: {new Date().toISOString()}</p>
-        <button
-          onClick={() => {
-            console.log('🔘 Load Full App button clicked');
-            try {
-              // Now try loading the real app
-              console.log('⚛️ Attempting to render full App...');
-              reactRoot.render(
-                <React.StrictMode>
-                  <HashRouter>
-                    <SafeApp />
-                  </HashRouter>
-                </React.StrictMode>
-              );
-              console.log('✅ Full App render initiated');
-            } catch (error) {
-              console.error('❌ Failed to render full app:', error);
-              reactRoot.render(
-                <div style={{padding: '40px', fontFamily: 'Arial', backgroundColor: '#e74c3c', minHeight: '100vh', color: 'white'}}>
-                  <h1>❌ App Load Failed</h1>
-                  <p><strong>Error:</strong> {error.message}</p>
-                  <pre style={{background: 'rgba(0,0,0,0.3)', padding: '15px', overflow: 'auto', fontSize: '11px', borderRadius: '8px', whiteSpace: 'pre-wrap'}}>
-                    {error.stack}
-                  </pre>
-                  <button onClick={() => window.location.reload()} style={{padding: '15px 30px', fontSize: '16px', background: 'white', color: '#e74c3c', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px'}}>
-                    Reload
-                  </button>
-                </div>
-              );
-            }
-          }}
-          style={{padding: '15px 30px', fontSize: '16px', background: 'white', color: '#10b981', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px'}}
-        >
-          Load Full App
-        </button>
-      </div>
+      <React.StrictMode>
+        <HashRouter>
+          <SafeApp />
+        </HashRouter>
+      </React.StrictMode>
     );
 
     // Mark as succeeded and clear failsafe
