@@ -92,32 +92,46 @@ function SafeApp() {
   }
 }
 
-try {
-  showStatus('🔧 Starting React initialization...');
-  const root = document.getElementById('root');
-  if (!root) {
-    throw new Error('Root element not found!');
-  }
+// IMMEDIATELY take over DOM - don't wait for anything
+console.log('🚀🚀🚀 React index.jsx executing NOW');
 
-  // IMMEDIATELY clear all HTML content to prevent it from staying visible
-  console.log('🧹 Clearing HTML placeholder...');
-  root.innerHTML = '';
+const root = document.getElementById('root');
+if (!root) {
+  document.body.innerHTML = '<h1 style="color: red; padding: 20px;">CRITICAL: Root element not found!</h1>';
+  throw new Error('Root element not found!');
+}
 
-  // Add a temporary React loading indicator
-  root.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #667eea; color: white; font-family: sans-serif;">
-      <div style="text-align: center;">
-        <div style="font-size: 48px; margin-bottom: 20px;">⚛️</div>
-        <div style="font-size: 20px;">React is taking over...</div>
-      </div>
+// FORCE clear all HTML immediately
+console.log('🧹 FORCE clearing HTML placeholder NOW');
+root.innerHTML = '';
+
+// Add React loading screen immediately
+root.innerHTML = `
+  <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: #667eea; color: white; font-family: sans-serif; z-index: 99999;">
+    <div style="text-align: center;">
+      <div style="font-size: 64px; margin-bottom: 20px; animation: pulse 1s infinite;">⚛️</div>
+      <div style="font-size: 24px; font-weight: bold;">React Loading...</div>
+      <div style="font-size: 14px; margin-top: 10px; opacity: 0.8;">If stuck, tap Reload</div>
+      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: rgba(255,255,255,0.2); border: 1px solid white; border-radius: 8px; color: white; cursor: pointer;">Reload</button>
     </div>
-  `;
+  </div>
+  <style>
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+  </style>
+`;
 
-  showStatus('✅ Root element cleared, creating React root...');
-  window.StudentAppRenderState.renderStarted = true;
+console.log('✅ HTML cleared and React placeholder shown');
+window.StudentAppRenderState = window.StudentAppRenderState || {};
+window.StudentAppRenderState.renderStarted = true;
 
-  // Create React root and render
+try {
+  console.log('⚛️ Creating React root...');
   const reactRoot = ReactDOM.createRoot(root);
+
+  console.log('⚛️ Rendering App component...');
   reactRoot.render(
     <React.StrictMode>
       <HashRouter>
@@ -127,22 +141,18 @@ try {
   );
 
   window.StudentAppRenderState.renderSucceeded = true;
-  showStatus('✅ React app rendered successfully!');
-  console.log('✅✅✅ React render complete - App should be visible now!');
+  console.log('✅✅✅ React render complete!');
 } catch (error) {
-  console.error('❌ Failed to render app:', error);
+  console.error('❌❌❌ FATAL React render error:', error);
   window.StudentAppRenderState.lastError = error?.message || String(error);
-  showStatus('❌ FATAL: ' + error.message);
 
-  const root = document.getElementById('root');
-  if (root) {
-    root.innerHTML = `
-      <div style="padding: 20px; font-family: sans-serif; background: white; min-height: 100vh;">
-        <h1 style="color: #e74c3c;">Fatal Error in React Initialization</h1>
-        <p><strong>Error:</strong> ${error.message}</p>
-        <pre style="background: #f5f5f5; padding: 10px; overflow: auto; font-size: 12px;">${error.stack || 'No stack trace'}</pre>
-        <button onclick="window.location.reload()" style="padding: 10px 20px; margin-top: 20px; cursor: pointer;">Reload App</button>
-      </div>
-    `;
-  }
+  root.innerHTML = `
+    <div style="padding: 20px; font-family: sans-serif; background: #fff; min-height: 100vh;">
+      <h1 style="color: #e74c3c;">❌ Fatal React Error</h1>
+      <p><strong>Error:</strong> ${error.message}</p>
+      <pre style="background: #f5f5f5; padding: 15px; overflow: auto; font-size: 11px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;">${error.stack || 'No stack trace'}</pre>
+      <button onclick="window.location.reload()" style="padding: 12px 24px; margin-top: 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">Reload App</button>
+    </div>
+  `;
+  throw error;
 }

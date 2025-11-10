@@ -93,8 +93,7 @@
 
       updateStatus('Step 2: HTML loaded ✓');
 
-      setTimeout(function() { updateStatus('Step 3: JavaScript running ✓'); }, 100);
-
+      // Removed timeouts - React will take over immediately
       console.log('🔧 Student: Initializing WebRTC polyfills...');
       
       // Crypto.randomUUID polyfill for older browsers
@@ -174,39 +173,10 @@
       console.log('📱 Platform:', navigator.platform);
       console.log('📱 User Agent:', navigator.userAgent);
       console.log('📱 Is iOS:', /iPad|iPhone|iPod/.test(navigator.userAgent));
-      updateStatus('Step 5: Platform detected: ' + navigator.platform);
 
-      setTimeout(function() {
-        updateStatus('Step 6: Waiting for React...');
-      }, 500);
-
-      // Debug: Check if app bundle loaded
-      setTimeout(function() {
-        if (typeof window.TarteelApp !== 'undefined') {
-          console.log('✅ TarteelApp IIFE bundle loaded');
-          updateStatus('Step 7: App bundle loaded ✓');
-        } else {
-          console.error('❌ TarteelApp bundle not loaded!');
-          updateStatus('Step 7: Waiting for app bundle...');
-        }
-      }, 1000);
-
-      // Check React initialization
-      setTimeout(function() {
-        if (typeof React !== 'undefined') {
-          console.log('✅ React is available');
-          updateStatus('Step 8: React loaded ✓');
-        } else {
-          console.error('❌ React not available');
-          updateStatus('Step 8: React missing');
-        }
-      }, 2000);
-
-      // DISABLED: Don't overwrite React's content
-      // React will handle its own error display now
-      setTimeout(function() {
-        console.log('⏰ 10 second check - React should have taken over by now');
-      }, 10000);
+      // ALL TIMEOUTS REMOVED - React will immediately take over
+      // The loading screen in HTML is just a brief placeholder
+      console.log('⏰ HTML placeholder ready - waiting for React to take over...');
     </script>
     <script type="module" src="/src/index.jsx"></script>
   </body>
