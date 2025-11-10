@@ -138,12 +138,29 @@ if (window.__REACT_APP_INITIALIZED__) {
 
     console.log('⚛️ Rendering App component');
     showStatus('Rendering App component...');
+
+    // TEMPORARY: Render simple test UI instead of full app to isolate the issue
     reactRoot.render(
-      <React.StrictMode>
-        <HashRouter>
-          <SafeApp />
-        </HashRouter>
-      </React.StrictMode>
+      <div style={{padding: '40px', fontFamily: 'Arial', backgroundColor: '#10b981', minHeight: '100vh', color: 'white'}}>
+        <h1>✅ React Rendered Successfully!</h1>
+        <p>If you see this green screen, React is working!</p>
+        <p>Build time: {new Date().toISOString()}</p>
+        <button
+          onClick={() => {
+            // Now try loading the real app
+            reactRoot.render(
+              <React.StrictMode>
+                <HashRouter>
+                  <SafeApp />
+                </HashRouter>
+              </React.StrictMode>
+            );
+          }}
+          style={{padding: '15px 30px', fontSize: '16px', background: 'white', color: '#10b981', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px'}}
+        >
+          Load Full App
+        </button>
+      </div>
     );
 
     // Mark as succeeded and clear failsafe
