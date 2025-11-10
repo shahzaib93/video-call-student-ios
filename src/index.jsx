@@ -23,10 +23,17 @@ let errorCount = 0;
 let errorMessages = [];
 
 function showErrorOnScreen() {
-  const statusEl = document.getElementById('status');
-  if (statusEl) {
-    const msg = errorMessages.map((text, i) => `Error #${i + 1}: ${text}`).join('<br/><br/>');
-    statusEl.innerHTML = `❌ JavaScript Errors (${errorMessages.length})<br/><small>${msg}</small>`;
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `
+      <div class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="status">
+          ❌ JavaScript Errors (${errorMessages.length})<br/>
+          ${errorMessages.map((text, i) => `Error #${i + 1}: ${text}`).join('<br/><br/>')}
+        </div>
+      </div>
+    `;
   }
 }
 
