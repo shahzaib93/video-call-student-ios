@@ -205,11 +205,19 @@
       // Show a visible message if scripts fail to load
       setTimeout(function() {
         var root = document.getElementById('root');
-        if (root && root.children.length === 1 && root.children[0].className === 'loading-screen') {
-          console.error('❌ App failed to load after 10 seconds');
-          var msg = '❌ React FAILED to load!<br><small>URL: ' + window.location.href + '</small>';
+        var stillShowingLoader = root && root.children.length === 1 && root.children[0].className === 'loading-screen';
+        var renderState = window.StudentAppRenderState || {};
+
+        if (stillShowingLoader) {
+          console.error('❌ App UI not mounted after 10 seconds', renderState);
+          var msg = '❌ React UI not visible yet!<br><small>URL: ' + window.location.href + '</small>';
           msg += '<br><small>TarteelApp: ' + (typeof window.TarteelApp !== 'undefined' ? 'loaded' : 'missing') + '</small>';
-          msg += '<br><small>React: ' + (typeof React !== 'undefined' ? 'loaded' : 'missing') + '</small>';
+          msg += '<br><small>React bundle: ' + (typeof React !== 'undefined' ? 'loaded' : 'missing') + '</small>';
+          msg += '<br><small>Render started: ' + (renderState.renderStarted ? 'yes' : 'no') + '</small>';
+          msg += '<br><small>Render succeeded flag: ' + (renderState.renderSucceeded ? 'yes' : 'no') + '</small>';
+          if (renderState.lastError) {
+            msg += '<br><small>Last error: ' + renderState.lastError + '</small>';
+          }
           updateStatus(msg);
         }
       }, 10000);

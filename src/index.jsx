@@ -17,6 +17,11 @@ function showStatus(msg) {
 window.React = React;
 window.ReactDOM = ReactDOM;
 window.TarteelApp = true;
+window.StudentAppRenderState = {
+  renderStarted: false,
+  renderSucceeded: false,
+  lastError: null
+};
 showStatus('✅ React imported and exposed globally');
 
 // Add error boundary for debugging - SHOW ERRORS ON SCREEN
@@ -94,6 +99,7 @@ try {
     throw new Error('Root element not found!');
   }
   showStatus('✅ Root element found, creating React root...');
+  window.StudentAppRenderState.renderStarted = true;
 
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
@@ -102,9 +108,11 @@ try {
       </HashRouter>
     </React.StrictMode>
   );
+  window.StudentAppRenderState.renderSucceeded = true;
   showStatus('✅ React app rendered successfully!');
 } catch (error) {
   console.error('❌ Failed to render app:', error);
+  window.StudentAppRenderState.lastError = error?.message || String(error);
   showStatus('❌ FATAL: ' + error.message);
   setTimeout(() => {
     document.body.innerHTML = `
