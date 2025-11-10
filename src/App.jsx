@@ -195,6 +195,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [configReady, setConfigReady] = useState(false);
   const [appError, setAppError] = useState(null);
+  const [initStatus, setInitStatus] = useState('Starting...');
   
   // WebRTC service with coturn TURN server
   const [webrtcService] = useState(() => {
@@ -249,23 +250,40 @@ function App() {
       tokenManager.clearToken();
       localStorage.removeItem('student-app-cache');
 
+      // Failsafe: If initialization takes more than 20 seconds, force continue
+      const failsafeTimeout = setTimeout(() => {
+        console.warn('⏰ Initialization timeout - forcing continue to login screen');
+        if (isMounted) {
+          setInitStatus('Timeout - continuing anyway');
+          setConfigReady(true);
+          setLoading(false);
+        }
+      }, 20000);
+
       try {
+        setInitStatus('Loading config...');
         const config = await initializeAppConfig();
         if (!isMounted) {
+          clearTimeout(failsafeTimeout);
           return;
         }
 
+        setInitStatus('Config loaded ✓');
         applyConfig(config);
         unsubscribeConfig = onAppConfigChange(applyConfig);
       } catch (error) {
         console.error('❌ Failed to initialise app config:', error);
         if (isMounted) {
-          setAppError(error);
+          setInitStatus('Config failed - using defaults');
+          // Don't set appError, just continue with defaults
+          console.log('Continuing with default config despite error');
         }
       } finally {
         if (isMounted) {
           setConfigReady(true);
+          setInitStatus('Checking auth...');
           await verifyToken();
+          clearTimeout(failsafeTimeout);
         }
       }
     };
@@ -348,17 +366,20 @@ function App() {
   }, [webrtcService, currentCallId]);
 
   const verifyToken = async () => {
+    console.log('🔐 Starting token verification...');
     try {
-      // Check if Firebase user is already authenticated
-      return new Promise((resolve) => {
+      // Add timeout to prevent hanging on Firebase auth check
+      const authCheckPromise = new Promise((resolve) => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           unsubscribe(); // Clean up listener
-          
+          console.log('🔐 Firebase auth state:', firebaseUser ? 'signed in' : 'not signed in');
+
           if (firebaseUser) {
             try {
+              setInitStatus('Loading user data...');
               // User is signed in, verify they're a student
               const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-              
+
               if (userDoc.exists() && userDoc.data().role === 'student') {
                 const userData = userDoc.data();
                 const user = {
@@ -369,10 +390,12 @@ function App() {
                   ...userData
                 };
 
+                console.log('✅ Student user authenticated:', user.username);
                 setUser(user);
                 setIsAuthenticated(true);
+                setInitStatus('Connecting to server...');
+
                 // Connect to signaling server for WebRTC calls only
-                // Connect to Railway signaling server
                 const { socketUrl } = getAppConfig();
                 const signalingUrl = socketUrl || SOCKET_URL;
                 socketManager.connect(signalingUrl, {
@@ -380,16 +403,14 @@ function App() {
                   username: user.username,
                   role: 'student'
                 });
-                
+
                 // Set user online immediately and setup tracking
                 UserService.setOnline();
-                
+
                 // Setup online status tracking after a small delay to ensure auth is complete
                 setTimeout(() => {
                   UserService.setupOnlineStatusTracking();
                 }, 1000);
-                
-                // Web app - no window expansion needed
               } else {
                 console.warn('User not student or not found in database');
                 await signOut(auth);
@@ -399,15 +420,29 @@ function App() {
               await signOut(auth);
             }
           } else {
-            // No authenticated user; remain on login screen
+            console.log('👤 No authenticated user - showing login screen');
           }
-          
+
+          setInitStatus('Ready!');
           setLoading(false);
           resolve();
         });
       });
+
+      // Timeout after 10 seconds
+      const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => {
+          console.warn('⏰ Auth check timeout - continuing to login screen');
+          setInitStatus('Auth timeout - continuing');
+          setLoading(false);
+          resolve();
+        }, 10000);
+      });
+
+      await Promise.race([authCheckPromise, timeoutPromise]);
     } catch (error) {
-      console.error('Token verification failed:', error);
+      console.error('❌ Token verification failed:', error);
+      setInitStatus('Auth failed - showing login');
       setLoading(false);
     }
   };
@@ -726,7 +761,7 @@ function App() {
   }
 
   if (!configReady || loading) {
-    console.log('[StudentApp] Render branch', { configReady, loading, isAuthenticated, appError });
+    console.log('[StudentApp] Render branch - LOADING', { configReady, loading, isAuthenticated, appError, initStatus });
     return (
       <Box
         display="flex"
@@ -747,11 +782,34 @@ function App() {
           zIndex: 10000
         }}
       >
-        <div style={{fontSize: '24px', marginBottom: '20px'}}>⏳</div>
-        <div style={{fontSize: '18px', marginBottom: '10px'}}>Loading Student App...</div>
-        <div style={{fontSize: '12px', opacity: 0.8}}>
-          Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'}
+        <div style={{fontSize: '48px', marginBottom: '20px'}}>⏳</div>
+        <div style={{fontSize: '20px', marginBottom: '15px', fontWeight: 'bold'}}>Loading Student App</div>
+        <div style={{fontSize: '14px', marginBottom: '20px', opacity: 0.9}}>
+          {initStatus}
         </div>
+        <div style={{fontSize: '12px', opacity: 0.7, fontFamily: 'monospace'}}>
+          Config: {configReady ? '✅ Ready' : '⏳ Loading'}<br/>
+          Auth: {loading ? '⏳ Checking' : '✅ Ready'}<br/>
+          Platform: {Capacitor.getPlatform()}
+        </div>
+        <button
+          onClick={() => {
+            console.log('🔄 Force reload triggered');
+            window.location.reload();
+          }}
+          style={{
+            marginTop: '30px',
+            padding: '10px 20px',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            border: '1px solid white',
+            borderRadius: '8px',
+            color: 'white',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
+        >
+          Reload App
+        </button>
       </Box>
     );
   }
