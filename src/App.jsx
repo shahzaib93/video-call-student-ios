@@ -421,6 +421,12 @@ function App() {
     console.log('🔑 Login attempt started...');
 
     try {
+      // Set persistence to inMemory BEFORE login to avoid IndexedDB on iOS
+      console.log('⚙️ Setting auth persistence...');
+      const { setPersistence, inMemoryPersistence } = await import('firebase/auth');
+      await setPersistence(auth, inMemoryPersistence);
+      console.log('✅ Persistence set to inMemory');
+
       // Add timeout to Firebase auth (30 seconds for mobile)
       console.log('🔐 Signing in with Firebase...');
       const authPromise = signInWithEmailAndPassword(auth, email, password);

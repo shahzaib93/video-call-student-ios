@@ -21,15 +21,6 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// Configure auth persistence for mobile
-import { setPersistence, inMemoryPersistence } from 'firebase/auth';
-
-// Use in-memory persistence on mobile to avoid IndexedDB issues on iOS
-// This means users will need to login again after app restart, but login will work
-setPersistence(auth, inMemoryPersistence).catch((error) => {
-  console.error('Failed to set auth persistence:', error);
-});
-
 // For development, you might want to use emulators
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   // Only connect to emulators in development and in browser environment
