@@ -213,8 +213,22 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-app-development
-          path: ios/App/ios/App/build/export/*.ipa
+          path: ios/App/build/export/*.ipa
           retention-days: 30
+
+      - name: Verify .ipa was created and contains assets
+        run: |
+          echo "🔍 Verifying .ipa file..."
+          IPA_FILE=$(find ios/App/build/export -name "*.ipa" | head -1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "❌ No .ipa file found!"
+            exit 1
+          fi
+          echo "✅ Found .ipa: $IPA_FILE"
+          echo "📦 Size: $(du -h "$IPA_FILE" | cut -f1)"
+
+          echo "🔍 Checking .ipa contents..."
+          unzip -l "$IPA_FILE" | grep -E "index.html|\.js$" | head -20
 
       - name: Build Summary
         run: |
