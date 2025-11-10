@@ -418,11 +418,31 @@ function App() {
   };
 
   const handleLogin = async (email, password) => {
+    console.log('🔑 Login attempt started...');
+
     try {
-      const firebaseUser = await signInWithEmailAndPassword(auth, email, password);
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.user.uid));
+      // Add timeout to Firebase auth
+      console.log('🔐 Signing in with Firebase...');
+      const authPromise = signInWithEmailAndPassword(auth, email, password);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Authentication timeout')), 15000)
+      );
+
+      const firebaseUser = await Promise.race([authPromise, timeoutPromise]);
+      console.log('✅ Firebase auth successful');
+
+      // Add timeout to Firestore fetch
+      console.log('📄 Fetching user document...');
+      const docPromise = getDoc(doc(db, 'users', firebaseUser.user.uid));
+      const docTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore fetch timeout')), 10000)
+      );
+
+      const userDoc = await Promise.race([docPromise, docTimeoutPromise]);
+      console.log('✅ User document fetched');
 
       if (!userDoc.exists()) {
+        console.error('❌ User document not found');
         await signOut(auth);
         throw new Error('User not found in database');
       }
@@ -430,6 +450,7 @@ function App() {
       const userData = userDoc.data();
 
       if (userData.role !== 'student') {
+        console.error('❌ User is not a student');
         await signOut(auth);
         throw new Error('Student access required');
       }
@@ -442,9 +463,11 @@ function App() {
         ...userData
       };
 
+      console.log('👤 Setting user state:', user.username);
       setUser(user);
       setIsAuthenticated(true);
 
+      console.log('🔌 Connecting socket...');
       const { socketUrl } = getAppConfig();
       socketManager.connect(socketUrl || SOCKET_URL, {
         userId: user.id,
@@ -452,21 +475,27 @@ function App() {
         role: 'student'
       });
 
+      console.log('🟢 Setting user online...');
       UserService.setOnline();
       setTimeout(() => UserService.setupOnlineStatusTracking(), 1000);
 
+      console.log('🎫 Getting ID token...');
       const idToken = await firebaseUser.user.getIdToken();
       tokenManager.saveToken(idToken);
 
+      console.log('🔔 Initializing push notifications...');
       try {
         await PushNotificationService.initialize(user);
+        console.log('✅ Push notifications initialized');
       } catch (pushError) {
-        console.error('Failed to initialize push notifications:', pushError);
+        console.error('⚠️ Failed to initialize push notifications:', pushError);
+        // Don't fail login if push fails
       }
 
+      console.log('✅ Login complete!');
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
 
       let errorMessage = 'Login failed';
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
