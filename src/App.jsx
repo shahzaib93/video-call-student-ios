@@ -200,77 +200,105 @@ function App() {
   const [hasCriticalError, setHasCriticalError] = useState(false);
 
   // Capture console logs for on-screen display (iOS debugging)
+  // Delayed start to avoid blocking initial render
   useEffect(() => {
-    const addLog = (level, ...args) => {
-      const timestamp = new Date().toLocaleTimeString();
-      const message = args.map(arg =>
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
+    console.log('🎯 Setting up console log capture...');
 
-      setDebugLogs(prev => {
-        const newLogs = [...prev, { timestamp, level, message }];
-        // Keep last 20 messages (increased from 10)
-        return newLogs.slice(-20);
-      });
-    };
+    // Small delay to let React finish initial render
+    const setupTimeout = setTimeout(() => {
+      const addLog = (level, ...args) => {
+        const timestamp = new Date().toLocaleTimeString();
+        const message = args.map(arg =>
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
 
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
+        setDebugLogs(prev => {
+          const newLogs = [...prev, { timestamp, level, message }];
+          // Keep last 20 messages
+          return newLogs.slice(-20);
+        });
+      };
 
-    // Intercept console methods
-    console.log = (...args) => {
-      originalLog(...args);
-      addLog('log', ...args);
-    };
+      const originalLog = console.log;
+      const originalError = console.error;
+      const originalWarn = console.warn;
 
-    console.error = (...args) => {
-      originalError(...args);
-      addLog('error', ...args);
-    };
+      // Intercept console methods
+      console.log = (...args) => {
+        originalLog(...args);
+        try {
+          addLog('log', ...args);
+        } catch (e) {
+          originalError('Failed to add log:', e);
+        }
+      };
 
-    console.warn = (...args) => {
-      originalWarn(...args);
-      addLog('warn', ...args);
-    };
+      console.error = (...args) => {
+        originalError(...args);
+        try {
+          addLog('error', ...args);
+        } catch (e) {
+          originalError('Failed to add error log:', e);
+        }
+      };
 
-    // Also capture window errors
-    const handleWindowError = (event) => {
-      const errorMsg = `Window Error: ${event.message} at ${event.filename}:${event.lineno}`;
-      addLog('error', errorMsg);
+      console.warn = (...args) => {
+        originalWarn(...args);
+        try {
+          addLog('warn', ...args);
+        } catch (e) {
+          originalError('Failed to add warn log:', e);
+        }
+      };
 
-      // Mark as critical error to prevent screen from disappearing
-      if (event.message && (
-        event.message.includes('localhost') ||
-        event.message.includes('Firebase') ||
-        event.message.includes('fetch')
-      )) {
-        setHasCriticalError(true);
-      }
-    };
+      // Also capture window errors
+      const handleWindowError = (event) => {
+        const errorMsg = `Window Error: ${event.message} at ${event.filename}:${event.lineno}`;
+        addLog('error', errorMsg);
 
-    const handleUnhandledRejection = (event) => {
-      const reason = String(event.reason);
-      addLog('error', `Unhandled Promise: ${reason}`);
+        // Mark as critical error to prevent screen from disappearing
+        if (event.message && (
+          event.message.includes('localhost') ||
+          event.message.includes('Firebase') ||
+          event.message.includes('fetch')
+        )) {
+          setHasCriticalError(true);
+        }
+      };
 
-      // Mark as critical if it's a Firebase or network error
-      if (reason.includes('localhost') ||
-          reason.includes('Firebase') ||
-          reason.includes('fetch') ||
-          reason.includes('CORS')) {
-        setHasCriticalError(true);
-      }
-    };
+      const handleUnhandledRejection = (event) => {
+        const reason = String(event.reason);
+        addLog('error', `Unhandled Promise: ${reason}`);
 
-    window.addEventListener('error', handleWindowError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+        // Mark as critical if it's a Firebase or network error
+        if (reason.includes('localhost') ||
+            reason.includes('Firebase') ||
+            reason.includes('fetch') ||
+            reason.includes('CORS')) {
+          setHasCriticalError(true);
+        }
+      };
+
+      window.addEventListener('error', handleWindowError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+      console.log('✅ Console log capture active');
+
+      // Cleanup function
+      window.__consoleCleanup = () => {
+        console.log = originalLog;
+        console.error = originalError;
+        console.warn = originalWarn;
+        window.removeEventListener('error', handleWindowError);
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      };
+    }, 100); // 100ms delay to let React render
 
     return () => {
-      console.log = originalLog;
-      console.error = originalError;
-      console.warn = originalWarn;
-      window.removeEventListener('error', handleWindowError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      clearTimeout(setupTimeout);
+      if (window.__consoleCleanup) {
+        window.__consoleCleanup();
+      }
     };
   }, []);
   

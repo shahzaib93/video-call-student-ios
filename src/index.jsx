@@ -98,34 +98,51 @@ try {
   if (!root) {
     throw new Error('Root element not found!');
   }
-  // Remove the placeholder loader so React can mount cleanly
-  if (root.innerHTML.trim()) {
-    root.innerHTML = '';
-  }
-  showStatus('✅ Root element found, creating React root...');
+
+  // IMMEDIATELY clear all HTML content to prevent it from staying visible
+  console.log('🧹 Clearing HTML placeholder...');
+  root.innerHTML = '';
+
+  // Add a temporary React loading indicator
+  root.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #667eea; color: white; font-family: sans-serif;">
+      <div style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 20px;">⚛️</div>
+        <div style="font-size: 20px;">React is taking over...</div>
+      </div>
+    </div>
+  `;
+
+  showStatus('✅ Root element cleared, creating React root...');
   window.StudentAppRenderState.renderStarted = true;
 
-  ReactDOM.createRoot(root).render(
+  // Create React root and render
+  const reactRoot = ReactDOM.createRoot(root);
+  reactRoot.render(
     <React.StrictMode>
       <HashRouter>
         <SafeApp />
       </HashRouter>
     </React.StrictMode>
   );
+
   window.StudentAppRenderState.renderSucceeded = true;
   showStatus('✅ React app rendered successfully!');
+  console.log('✅✅✅ React render complete - App should be visible now!');
 } catch (error) {
   console.error('❌ Failed to render app:', error);
   window.StudentAppRenderState.lastError = error?.message || String(error);
   showStatus('❌ FATAL: ' + error.message);
-  setTimeout(() => {
-    document.body.innerHTML = `
+
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `
       <div style="padding: 20px; font-family: sans-serif; background: white; min-height: 100vh;">
         <h1 style="color: #e74c3c;">Fatal Error in React Initialization</h1>
         <p><strong>Error:</strong> ${error.message}</p>
-        <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${error.stack || 'No stack trace'}</pre>
-        <button onclick="window.location.reload()" style="padding: 10px 20px; margin-top: 20px;">Reload App</button>
+        <pre style="background: #f5f5f5; padding: 10px; overflow: auto; font-size: 12px;">${error.stack || 'No stack trace'}</pre>
+        <button onclick="window.location.reload()" style="padding: 10px 20px; margin-top: 20px; cursor: pointer;">Reload App</button>
       </div>
     `;
-  }, 1000);
+  }
 }
