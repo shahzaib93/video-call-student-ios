@@ -46,12 +46,43 @@
       }
     </style>
   </head>
-  <body>
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
     <div id="root">
-      <div class="initial-loader">
-        <div class="spinner"></div>
+      <!-- FALLBACK: This should be visible IMMEDIATELY, even if CSS/JS fails -->
+      <div id="html-fallback" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #667eea; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; z-index: 9999;">
+        <div style="width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.3); border-top: 5px solid white; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="margin-top: 20px; font-size: 18px; font-weight: bold;">Loading Student App</div>
+        <div id="load-status" style="margin-top: 10px; font-size: 14px;">Waiting for JavaScript...</div>
+        <div id="load-timer" style="margin-top: 10px; font-size: 12px; opacity: 0.8;">0s</div>
       </div>
     </div>
+
+    <!-- Inline script to track loading time and detect failures -->
+    <script>
+      console.log('✅ HTML loaded, inline script executing');
+      var startTime = Date.now();
+      var timerInterval = setInterval(function() {
+        var elapsed = Math.round((Date.now() - startTime) / 1000);
+        var timerEl = document.getElementById('load-timer');
+        if (timerEl) {
+          timerEl.textContent = elapsed + 's';
+        }
+
+        // After 10 seconds, show error if React hasn't loaded
+        if (elapsed >= 10) {
+          clearInterval(timerInterval);
+          if (!window.TarteelApp || !window.StudentAppRenderState?.renderStarted) {
+            console.error('❌ JavaScript module failed to load after 10 seconds');
+            var statusEl = document.getElementById('load-status');
+            if (statusEl) {
+              statusEl.innerHTML = '❌ JavaScript module failed to load!<br>Check if /src/index.jsx exists and is valid';
+              statusEl.style.color = '#ff6b6b';
+              statusEl.style.fontWeight = 'bold';
+            }
+          }
+        }
+      }, 1000);
+    </script>
 
     <!-- WebRTC Polyfills (needed for video calling) -->
     <script>
