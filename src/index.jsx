@@ -98,6 +98,10 @@ try {
   if (!root) {
     throw new Error('Root element not found!');
   }
+  // Remove the placeholder loader so React can mount cleanly
+  if (root.innerHTML.trim()) {
+    root.innerHTML = '';
+  }
   showStatus('✅ Root element found, creating React root...');
   window.StudentAppRenderState.renderStarted = true;
 
