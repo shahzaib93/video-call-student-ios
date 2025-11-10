@@ -180,13 +180,25 @@ function App() {
   // Initialize app config
   useEffect(() => {
     let isMounted = true;
+    let authUnsubscribe = null;
 
     const init = async () => {
+      // Failsafe: Force loading to complete after 10 seconds
+      const failsafeTimeout = setTimeout(() => {
+        console.warn('⏰ Loading timeout - forcing to login screen');
+        if (isMounted) {
+          setLoading(false);
+        }
+      }, 10000);
+
       try {
         console.log('🔧 Initializing app config...');
         await initializeAppConfig();
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          clearTimeout(failsafeTimeout);
+          return;
+        }
 
         // Configure WebRTC with TURN server
         if (webrtcService) {
@@ -201,13 +213,19 @@ function App() {
       }
 
       // Check auth state
-      if (!isMounted) return;
+      if (!isMounted) {
+        clearTimeout(failsafeTimeout);
+        return;
+      }
 
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      authUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (!isMounted) return;
+
+        console.log('🔐 Auth state changed:', firebaseUser ? 'signed in' : 'not signed in');
 
         if (firebaseUser) {
           try {
+            console.log('📄 Fetching user document...');
             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
 
             if (userDoc.exists() && userDoc.data().role === 'student') {
@@ -235,24 +253,30 @@ function App() {
               UserService.setOnline();
               setTimeout(() => UserService.setupOnlineStatusTracking(), 1000);
             } else {
+              console.warn('⚠️ User not student or not found');
               await signOut(auth);
             }
           } catch (error) {
-            console.error('Error verifying user:', error);
+            console.error('❌ Error verifying user:', error);
             await signOut(auth);
           }
+        } else {
+          console.log('👤 No user - showing login screen');
         }
 
+        clearTimeout(failsafeTimeout);
         setLoading(false);
       });
-
-      return () => {
-        isMounted = false;
-        unsubscribe();
-      };
     };
 
     init();
+
+    return () => {
+      isMounted = false;
+      if (authUnsubscribe) {
+        authUnsubscribe();
+      }
+    };
   }, [webrtcService]);
 
   // Setup WebRTC when socket connects
