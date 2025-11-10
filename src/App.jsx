@@ -699,6 +699,12 @@ function App() {
   };
 
   if (appError) {
+    console.log('[StudentApp] Render branch', {
+      configReady,
+      loading,
+      isAuthenticated,
+      appError: appError?.message || String(appError)
+    });
     return (
       <ThemeProvider theme={modernTheme}>
         <CssBaseline />
@@ -720,6 +726,7 @@ function App() {
   }
 
   if (!configReady || loading) {
+    console.log('[StudentApp] Render branch', { configReady, loading, isAuthenticated, appError });
     return (
       <Box 
         display="flex" 
@@ -733,6 +740,7 @@ function App() {
   }
 
   if (!isAuthenticated) {
+    console.log('[StudentApp] Render branch', { configReady, loading, isAuthenticated, appError });
     return (
       <ThemeProvider theme={modernTheme}>
         <CssBaseline />
