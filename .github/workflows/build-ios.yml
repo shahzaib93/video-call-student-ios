@@ -17,8 +17,8 @@ jobs:
 
     env:
       IOS_APP_DIR: ios/App
-      ARCHIVE_PATH: ios/App/build/App.xcarchive
-      EXPORT_PATH: ios/App/build/export
+      ARCHIVE_PATH: build/App.xcarchive
+      EXPORT_PATH: build/export
       APP_SCHEME: App
 
     steps:
@@ -219,7 +219,7 @@ jobs:
       - name: Verify .ipa was created and contains assets
         run: |
           echo "🔍 Verifying .ipa file..."
-          IPA_FILE=$(find ios/App/build/export -name "*.ipa" | head -1)
+          IPA_FILE=$(find "$IOS_APP_DIR/$EXPORT_PATH" -name "*.ipa" | head -1)
           if [ -z "$IPA_FILE" ]; then
             echo "❌ No .ipa file found!"
             exit 1
