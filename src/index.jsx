@@ -24,45 +24,19 @@ window.StudentAppRenderState = {
 };
 showStatus('✅ React imported and exposed globally');
 
-// Add error boundary for debugging - SHOW ERRORS ON SCREEN
-let errorCount = 0;
-let errorMessages = [];
-
-function showErrorOnScreen() {
-  const root = document.getElementById('root');
-  if (root) {
-    root.innerHTML = `
-      <div class="loading-screen">
-        <div class="loading-spinner"></div>
-        <div class="loading-text" id="status">
-          ❌ JavaScript Errors (${errorMessages.length})<br/>
-          ${errorMessages.map((text, i) => `Error #${i + 1}: ${text}`).join('<br/><br/>')}
-        </div>
-      </div>
-    `;
-  }
-}
-
+// Global error handlers for logging only (don't manipulate DOM after React starts)
 window.addEventListener('error', (e) => {
   console.error('[StudentApp] Global error:', e.error || e.message, e);
-  errorCount++;
   const msg = e.error?.message || e.message || 'Unknown error';
   const stack = e.error?.stack || 'No stack trace';
   const file = e.filename || 'Unknown file';
   const line = e.lineno || '?';
-
-  errorMessages.push(`Message: ${msg}\nFile: ${file}:${line}\n\nStack:\n${stack}`);
-
-  setTimeout(() => showErrorOnScreen(), 500);
+  console.error(`❌ Error: ${msg} at ${file}:${line}\n${stack}`);
 });
 
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[StudentApp] Unhandled promise rejection:', e.reason);
-  errorCount++;
-
-  errorMessages.push(`Promise Rejection:\n${e.reason}\n\n${e.reason?.stack || ''}`);
-
-  setTimeout(() => showErrorOnScreen(), 500);
+  console.error(`❌ Promise Rejection: ${e.reason}\n${e.reason?.stack || ''}`);
 });
 
 // Create a safe App wrapper that won't crash the entire app
