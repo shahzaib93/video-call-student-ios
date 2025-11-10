@@ -39,7 +39,7 @@ function showErrorOnScreen() {
 }
 
 window.addEventListener('error', (e) => {
-  console.error('Global error:', e.error);
+  console.error('[StudentApp] Global error:', e.error || e.message, e);
   errorCount++;
   const msg = e.error?.message || e.message || 'Unknown error';
   const stack = e.error?.stack || 'No stack trace';
@@ -52,7 +52,7 @@ window.addEventListener('error', (e) => {
 });
 
 window.addEventListener('unhandledrejection', (e) => {
-  console.error('Unhandled promise rejection:', e.reason);
+  console.error('[StudentApp] Unhandled promise rejection:', e.reason);
   errorCount++;
 
   errorMessages.push(`Promise Rejection:\n${e.reason}\n\n${e.reason?.stack || ''}`);
