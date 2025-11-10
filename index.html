@@ -10,93 +10,52 @@
     <title>Tarteel-e-Quran - Student Portal</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-  <style>
-    #root {
-      min-height: 100vh;
-      background-color: #f5f5f5;
-    }
-    .loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #667eea;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      font-family: 'Inter', sans-serif;
-      z-index: 9999;
-    }
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top: 4px solid white;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .loading-text {
-      margin-top: 20px;
-      font-size: 18px;
-    }
-  </style>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      /* Simple loading spinner */
+      .initial-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #667eea;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
     <div id="root">
-      <div class="loading-screen">
-        <div class="loading-spinner"></div>
-        <div class="loading-text" id="status">Testing iOS... Step 1</div>
+      <div class="initial-loader">
+        <div class="spinner"></div>
       </div>
     </div>
-    <!-- WebRTC Support -->
+
+    <!-- WebRTC Polyfills (needed for video calling) -->
     <script>
-      // AGGRESSIVE ERROR DISPLAY FOR iOS
-      function updateStatus(msg) {
-        var el = document.getElementById('status');
-        if (el) {
-          el.innerHTML = msg;
-          console.log(msg);
-        }
-      }
-
-      // Catch resource load failures (no stack trace from WKWebView)
-      window.addEventListener('error', function(event) {
-        if (!event.error && event.target) {
-          var tag = event.target.tagName;
-          if (tag === 'SCRIPT') {
-            var src = event.target.getAttribute('src') || 'inline';
-            console.error('❌ Script failed to load:', src, event);
-            updateStatus('❌ Script failed: ' + src);
-          }
-          if (tag === 'LINK') {
-            var href = event.target.getAttribute('href') || 'inline';
-            console.error('❌ Stylesheet failed to load:', href, event);
-            updateStatus('❌ Stylesheet failed: ' + href);
-          }
-        }
-      }, true);
-
-      fetch('assets/index-4703df5e.js')
-        .then(r => updateStatus('Asset index-4703df5e.js: ' + r.status))
-        .catch(err => updateStatus('Asset index-4703df5e.js failed: ' + err.message));
-
-      fetch('assets/vendor-59437187.js')
-        .then(r => updateStatus('Asset vendor-59437187.js: ' + r.status))
-        .catch(err => updateStatus('Asset vendor-59437187.js failed: ' + err.message));
-
-      updateStatus('Step 2: HTML loaded ✓');
-
-      // Removed timeouts - React will take over immediately
-      console.log('🔧 Student: Initializing WebRTC polyfills...');
-      
-      // Crypto.randomUUID polyfill for older browsers
+      // Crypto.randomUUID polyfill
       if (!crypto.randomUUID) {
         crypto.randomUUID = function() {
           return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -106,78 +65,31 @@
           });
         };
       }
-      
-      // Ensure WebRTC API compatibility
+
+      // WebRTC API compatibility
       window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
-      
-      // Legacy getUserMedia fallback (deprecated but needed for older browsers)
       navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-      
-      // Enhanced MediaDevices API polyfill
+
+      // MediaDevices API polyfill
       if (!navigator.mediaDevices) {
-        console.log('📱 Student: Creating mediaDevices polyfill...');
         navigator.mediaDevices = {};
       }
-      
+
       if (!navigator.mediaDevices.getUserMedia) {
-        console.log('🎥 Student: Creating getUserMedia polyfill...');
         navigator.mediaDevices.getUserMedia = function(constraints) {
-          console.log('🎥 Student: Polyfill getUserMedia called with:', constraints);
-          
-          // First try the modern API
           var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-          
+
           if (!getUserMedia) {
-            console.error('❌ Student: No getUserMedia implementation found');
-            return Promise.reject(new Error('WebRTC getUserMedia is not supported in this browser. Please use Chrome, Firefox, or Safari.'));
+            return Promise.reject(new Error('getUserMedia is not supported'));
           }
-          
-          console.log('✅ Student: Using legacy getUserMedia');
+
           return new Promise(function(resolve, reject) {
-            try {
-              getUserMedia.call(navigator, constraints, function(stream) {
-                console.log('✅ Student: getUserMedia success via polyfill');
-                resolve(stream);
-              }, function(error) {
-                console.error('❌ Student: getUserMedia error via polyfill:', error);
-                reject(error);
-              });
-            } catch (error) {
-              console.error('❌ Student: Exception in getUserMedia polyfill:', error);
-              reject(error);
-            }
+            getUserMedia.call(navigator, constraints, resolve, reject);
           });
         };
-      } else {
-        console.log('✅ Student: Native getUserMedia available');
       }
-      
-      // Test mediaDevices availability
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        console.log('✅ Student: mediaDevices.getUserMedia is available');
-      } else {
-        console.error('❌ Student: mediaDevices.getUserMedia is still not available after polyfill');
-      }
-      
-      // Check for HTTPS requirement for web apps
-      if (location.protocol !== 'https:' && 
-          location.hostname !== 'localhost' && 
-          location.hostname !== '127.0.0.1') {
-        console.warn('⚠️  WebRTC requires HTTPS for camera/microphone access (except on localhost)');
-      }
-      
-      console.log('✅ Student: WebRTC polyfills initialized');
-      updateStatus('Step 4: WebRTC polyfills ready ✓');
-
-      // Debug: Check if we're in Capacitor
-      console.log('📱 Platform:', navigator.platform);
-      console.log('📱 User Agent:', navigator.userAgent);
-      console.log('📱 Is iOS:', /iPad|iPhone|iPod/.test(navigator.userAgent));
-
-      // ALL TIMEOUTS REMOVED - React will immediately take over
-      // The loading screen in HTML is just a brief placeholder
-      console.log('⏰ HTML placeholder ready - waiting for React to take over...');
     </script>
+
     <script type="module" src="/src/index.jsx"></script>
   </body>
 </html>
