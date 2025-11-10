@@ -839,29 +839,19 @@ function App() {
   };
 
   if (appError) {
-    console.log('[StudentApp] Render branch', {
+    console.log('[StudentApp] Render branch - APP ERROR', {
       configReady,
       loading,
       isAuthenticated,
       appError: appError?.message || String(appError)
     });
     return (
-      <ThemeProvider theme={modernTheme}>
-        <CssBaseline />
-        <Box 
-          display="flex" 
-          flexDirection="column"
-          justifyContent="center" 
-          alignItems="center" 
-          height="100vh"
-          p={3}
-        >
-          <h2>App Error</h2>
-          <p>Something went wrong. Please restart the app.</p>
-          <p style={{fontSize: '12px', opacity: 0.7}}>{appError.toString()}</p>
-          <button onClick={() => window.location.reload()}>Reload App</button>
-        </Box>
-      </ThemeProvider>
+      <div style={{padding: '40px', fontFamily: 'Arial', backgroundColor: '#ff6b6b', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
+        <h2>❌ App Error</h2>
+        <p>Something went wrong. Please restart the app.</p>
+        <p style={{fontSize: '12px', opacity: 0.7}}>{appError.toString()}</p>
+        <button onClick={() => window.location.reload()} style={{padding: '15px 30px', fontSize: '16px', marginTop: '20px'}}>Reload App</button>
+      </div>
     );
   }
 
@@ -877,24 +867,23 @@ function App() {
       logCount: debugLogs.length
     });
     return (
-      <Box
-        display="flex"
-        flexDirection="column"
-        height="100vh"
-        sx={{
-          backgroundColor: '#667eea',
-          color: 'white',
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 10000,
-          overflow: 'hidden'
-        }}
-      >
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        backgroundColor: '#667eea',
+        color: 'white',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 10000,
+        overflow: 'hidden',
+        fontFamily: 'Arial, sans-serif'
+      }}>
         {/* Main status at top */}
-        <Box sx={{ padding: 3, textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '24px', textAlign: 'center', flexShrink: 0 }}>
           <div style={{fontSize: '36px', marginBottom: '10px'}}>
             {hasCriticalError ? '❌' : '⏳'}
           </div>
@@ -908,10 +897,10 @@ function App() {
             Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'} | {Capacitor.getPlatform()}
             {hasCriticalError && <div style={{color: '#ff6b6b', marginTop: '5px'}}>⚠️ Errors detected - screen locked</div>}
           </div>
-        </Box>
+        </div>
 
         {/* Console logs display */}
-        <Box sx={{
+        <div style={{
           flex: 1,
           backgroundColor: 'rgba(0,0,0,0.4)',
           margin: '0 15px 15px 15px',
@@ -949,10 +938,10 @@ function App() {
               ))}
             </div>
           )}
-        </Box>
+        </div>
 
         {/* Action buttons at bottom */}
-        <Box sx={{ padding: '15px', textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '15px', textAlign: 'center', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
@@ -995,8 +984,8 @@ function App() {
               </button>
             )}
           </div>
-        </Box>
-      </Box>
+        </div>
+      </div>
     );
   }
 
@@ -1006,9 +995,9 @@ function App() {
     return (
       <ThemeProvider theme={modernTheme}>
         <CssBaseline />
-        <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
           <Login onLogin={handleLogin} />
-        </Box>
+        </div>
       </ThemeProvider>
     );
   }
