@@ -197,6 +197,7 @@ function App() {
   const [appError, setAppError] = useState(null);
   const [initStatus, setInitStatus] = useState('Starting...');
   const [debugLogs, setDebugLogs] = useState([]);
+  const [hasCriticalError, setHasCriticalError] = useState(false);
 
   // Capture console logs for on-screen display (iOS debugging)
   useEffect(() => {
@@ -206,13 +207,18 @@ function App() {
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
 
-      setDebugLogs(prev => [...prev.slice(-10), { timestamp, level, message }]);
+      setDebugLogs(prev => {
+        const newLogs = [...prev, { timestamp, level, message }];
+        // Keep last 20 messages (increased from 10)
+        return newLogs.slice(-20);
+      });
     };
 
     const originalLog = console.log;
     const originalError = console.error;
     const originalWarn = console.warn;
 
+    // Intercept console methods
     console.log = (...args) => {
       originalLog(...args);
       addLog('log', ...args);
@@ -228,10 +234,43 @@ function App() {
       addLog('warn', ...args);
     };
 
+    // Also capture window errors
+    const handleWindowError = (event) => {
+      const errorMsg = `Window Error: ${event.message} at ${event.filename}:${event.lineno}`;
+      addLog('error', errorMsg);
+
+      // Mark as critical error to prevent screen from disappearing
+      if (event.message && (
+        event.message.includes('localhost') ||
+        event.message.includes('Firebase') ||
+        event.message.includes('fetch')
+      )) {
+        setHasCriticalError(true);
+      }
+    };
+
+    const handleUnhandledRejection = (event) => {
+      const reason = String(event.reason);
+      addLog('error', `Unhandled Promise: ${reason}`);
+
+      // Mark as critical if it's a Firebase or network error
+      if (reason.includes('localhost') ||
+          reason.includes('Firebase') ||
+          reason.includes('fetch') ||
+          reason.includes('CORS')) {
+        setHasCriticalError(true);
+      }
+    };
+
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
     return () => {
       console.log = originalLog;
       console.error = originalError;
       console.warn = originalWarn;
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
   }, []);
   
@@ -798,8 +837,17 @@ function App() {
     );
   }
 
-  if (!configReady || loading) {
-    console.log('[StudentApp] Render branch - LOADING', { configReady, loading, isAuthenticated, appError, initStatus });
+  // If we have critical errors, stay on debug screen even if loading completes
+  if (!configReady || loading || (hasCriticalError && debugLogs.length > 0)) {
+    console.log('[StudentApp] Render branch - LOADING/DEBUG', {
+      configReady,
+      loading,
+      isAuthenticated,
+      appError,
+      initStatus,
+      hasCriticalError,
+      logCount: debugLogs.length
+    });
     return (
       <Box
         display="flex"
@@ -819,20 +867,25 @@ function App() {
       >
         {/* Main status at top */}
         <Box sx={{ padding: 3, textAlign: 'center', flexShrink: 0 }}>
-          <div style={{fontSize: '36px', marginBottom: '10px'}}>⏳</div>
-          <div style={{fontSize: '18px', marginBottom: '10px', fontWeight: 'bold'}}>Loading Student App</div>
+          <div style={{fontSize: '36px', marginBottom: '10px'}}>
+            {hasCriticalError ? '❌' : '⏳'}
+          </div>
+          <div style={{fontSize: '18px', marginBottom: '10px', fontWeight: 'bold'}}>
+            {hasCriticalError ? 'Error - Check Logs Below' : 'Loading Student App'}
+          </div>
           <div style={{fontSize: '14px', marginBottom: '15px', opacity: 0.9}}>
             {initStatus}
           </div>
           <div style={{fontSize: '11px', opacity: 0.7, fontFamily: 'monospace'}}>
             Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'} | {Capacitor.getPlatform()}
+            {hasCriticalError && <div style={{color: '#ff6b6b', marginTop: '5px'}}>⚠️ Errors detected - screen locked</div>}
           </div>
         </Box>
 
         {/* Console logs display */}
         <Box sx={{
           flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.3)',
+          backgroundColor: 'rgba(0,0,0,0.4)',
           margin: '0 15px 15px 15px',
           borderRadius: '8px',
           padding: '10px',
@@ -840,49 +893,80 @@ function App() {
           fontFamily: 'monospace',
           fontSize: '10px'
         }}>
-          <div style={{marginBottom: '5px', opacity: 0.7, fontSize: '9px'}}>
-            📋 Console Output (last 10 messages):
+          <div style={{marginBottom: '8px', opacity: 0.8, fontSize: '10px', fontWeight: 'bold'}}>
+            📋 Console Output ({debugLogs.length} messages):
           </div>
           {debugLogs.length === 0 ? (
             <div style={{opacity: 0.5, fontSize: '9px'}}>Waiting for logs...</div>
           ) : (
-            debugLogs.map((log, i) => (
-              <div
-                key={i}
-                style={{
-                  marginBottom: '3px',
-                  paddingBottom: '3px',
-                  borderBottom: '1px solid rgba(255,255,255,0.1)',
-                  color: log.level === 'error' ? '#ff6b6b' : log.level === 'warn' ? '#ffd93d' : 'white',
-                  wordBreak: 'break-word'
-                }}
-              >
-                <span style={{opacity: 0.6}}>[{log.timestamp}]</span> {log.message.substring(0, 200)}
-              </div>
-            ))
+            <div>
+              {debugLogs.map((log, i) => (
+                <div
+                  key={i}
+                  style={{
+                    marginBottom: '5px',
+                    paddingBottom: '5px',
+                    borderBottom: '1px solid rgba(255,255,255,0.15)',
+                    color: log.level === 'error' ? '#ff6b6b' : log.level === 'warn' ? '#ffd93d' : 'white',
+                    wordBreak: 'break-word',
+                    fontSize: log.level === 'error' ? '11px' : '10px',
+                    fontWeight: log.level === 'error' ? 'bold' : 'normal'
+                  }}
+                >
+                  <div style={{opacity: 0.6, fontSize: '9px', marginBottom: '2px'}}>
+                    [{log.timestamp}] {log.level === 'error' ? '❌' : log.level === 'warn' ? '⚠️' : 'ℹ️'}
+                  </div>
+                  <div>{log.message}</div>
+                </div>
+              ))}
+            </div>
           )}
         </Box>
 
-        {/* Reload button at bottom */}
+        {/* Action buttons at bottom */}
         <Box sx={{ padding: '15px', textAlign: 'center', flexShrink: 0 }}>
-          <button
-            onClick={() => {
-              console.log('🔄 Force reload triggered');
-              window.location.reload();
-            }}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              border: '1px solid white',
-              borderRadius: '8px',
-              color: 'white',
-              fontSize: '14px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            🔄 Reload App
-          </button>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                console.log('🔄 Force reload triggered');
+                window.location.reload();
+              }}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                border: '1px solid white',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              🔄 Reload
+            </button>
+            {hasCriticalError && (
+              <button
+                onClick={() => {
+                  console.log('⚠️ Forcing continue despite errors');
+                  setHasCriticalError(false);
+                  setLoading(false);
+                  setConfigReady(true);
+                }}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: 'rgba(255,107,107,0.3)',
+                  border: '1px solid #ff6b6b',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                ⚠️ Continue Anyway
+              </button>
+            )}
+          </div>
         </Box>
       </Box>
     );
