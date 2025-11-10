@@ -467,30 +467,36 @@ function App() {
       setUser(user);
       setIsAuthenticated(true);
 
-      console.log('🔌 Connecting socket...');
-      const { socketUrl } = getAppConfig();
-      socketManager.connect(socketUrl || SOCKET_URL, {
-        userId: user.id,
-        username: user.username,
-        role: 'student'
-      });
+      // Do these async operations in background - don't block login
+      setTimeout(async () => {
+        try {
+          console.log('🔌 Connecting socket...');
+          const { socketUrl } = getAppConfig();
+          socketManager.connect(socketUrl || SOCKET_URL, {
+            userId: user.id,
+            username: user.username,
+            role: 'student'
+          });
 
-      console.log('🟢 Setting user online...');
-      UserService.setOnline();
-      setTimeout(() => UserService.setupOnlineStatusTracking(), 1000);
+          console.log('🟢 Setting user online...');
+          UserService.setOnline();
+          setTimeout(() => UserService.setupOnlineStatusTracking(), 1000);
 
-      console.log('🎫 Getting ID token...');
-      const idToken = await firebaseUser.user.getIdToken();
-      tokenManager.saveToken(idToken);
+          console.log('🎫 Getting ID token...');
+          const idToken = await firebaseUser.user.getIdToken();
+          tokenManager.saveToken(idToken);
 
-      console.log('🔔 Initializing push notifications...');
-      try {
-        await PushNotificationService.initialize(user);
-        console.log('✅ Push notifications initialized');
-      } catch (pushError) {
-        console.error('⚠️ Failed to initialize push notifications:', pushError);
-        // Don't fail login if push fails
-      }
+          console.log('🔔 Initializing push notifications...');
+          try {
+            await PushNotificationService.initialize(user);
+            console.log('✅ Push notifications initialized');
+          } catch (pushError) {
+            console.error('⚠️ Failed to initialize push notifications:', pushError);
+          }
+        } catch (err) {
+          console.error('⚠️ Background initialization error:', err);
+        }
+      }, 100);
 
       console.log('✅ Login complete!');
       return { success: true };

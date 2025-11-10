@@ -19,19 +19,32 @@ function Login({ onLogin }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setStatus('');
     setLoading(true);
+
+    // Timeout to show what step is hanging
+    const statusTimeout = setTimeout(() => {
+      setStatus('Login is taking longer than expected... If this persists, please check your internet connection.');
+    }, 10000);
 
     try {
       const result = await onLogin(formData.email, formData.password);
+      clearTimeout(statusTimeout);
+
       if (!result.success) {
         setError(result.error || 'Login failed');
+        setStatus('');
       }
+      // If successful, onLogin will update auth state and app will navigate automatically
     } catch (error) {
+      clearTimeout(statusTimeout);
       setError('An unexpected error occurred');
+      setStatus('');
     } finally {
       setLoading(false);
     }
@@ -107,6 +120,12 @@ function Login({ onLogin }) {
         {error && (
           <Alert severity="error" sx={{ mb: 3, width: '100%' }}>
             {error}
+          </Alert>
+        )}
+
+        {status && (
+          <Alert severity="warning" sx={{ mb: 3, width: '100%' }}>
+            {status}
           </Alert>
         )}
 
