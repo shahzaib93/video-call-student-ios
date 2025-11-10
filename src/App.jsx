@@ -421,11 +421,11 @@ function App() {
     console.log('🔑 Login attempt started...');
 
     try {
-      // Add timeout to Firebase auth
+      // Add timeout to Firebase auth (30 seconds for mobile)
       console.log('🔐 Signing in with Firebase...');
       const authPromise = signInWithEmailAndPassword(auth, email, password);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Authentication timeout')), 15000)
+        setTimeout(() => reject(new Error('Authentication timeout - please check your internet connection')), 30000)
       );
 
       const firebaseUser = await Promise.race([authPromise, timeoutPromise]);
