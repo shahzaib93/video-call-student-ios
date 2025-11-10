@@ -196,6 +196,44 @@ function App() {
   const [configReady, setConfigReady] = useState(false);
   const [appError, setAppError] = useState(null);
   const [initStatus, setInitStatus] = useState('Starting...');
+  const [debugLogs, setDebugLogs] = useState([]);
+
+  // Capture console logs for on-screen display (iOS debugging)
+  useEffect(() => {
+    const addLog = (level, ...args) => {
+      const timestamp = new Date().toLocaleTimeString();
+      const message = args.map(arg =>
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+
+      setDebugLogs(prev => [...prev.slice(-10), { timestamp, level, message }]);
+    };
+
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = (...args) => {
+      originalLog(...args);
+      addLog('log', ...args);
+    };
+
+    console.error = (...args) => {
+      originalError(...args);
+      addLog('error', ...args);
+    };
+
+    console.warn = (...args) => {
+      originalWarn(...args);
+      addLog('warn', ...args);
+    };
+
+    return () => {
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+    };
+  }, []);
   
   // WebRTC service with coturn TURN server
   const [webrtcService] = useState(() => {
@@ -766,50 +804,86 @@ function App() {
       <Box
         display="flex"
         flexDirection="column"
-        justifyContent="center"
-        alignItems="center"
         height="100vh"
         sx={{
           backgroundColor: '#667eea',
           color: 'white',
-          padding: 3,
-          textAlign: 'center',
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 10000
+          zIndex: 10000,
+          overflow: 'hidden'
         }}
       >
-        <div style={{fontSize: '48px', marginBottom: '20px'}}>⏳</div>
-        <div style={{fontSize: '20px', marginBottom: '15px', fontWeight: 'bold'}}>Loading Student App</div>
-        <div style={{fontSize: '14px', marginBottom: '20px', opacity: 0.9}}>
-          {initStatus}
-        </div>
-        <div style={{fontSize: '12px', opacity: 0.7, fontFamily: 'monospace'}}>
-          Config: {configReady ? '✅ Ready' : '⏳ Loading'}<br/>
-          Auth: {loading ? '⏳ Checking' : '✅ Ready'}<br/>
-          Platform: {Capacitor.getPlatform()}
-        </div>
-        <button
-          onClick={() => {
-            console.log('🔄 Force reload triggered');
-            window.location.reload();
-          }}
-          style={{
-            marginTop: '30px',
-            padding: '10px 20px',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            border: '1px solid white',
-            borderRadius: '8px',
-            color: 'white',
-            fontSize: '14px',
-            cursor: 'pointer'
-          }}
-        >
-          Reload App
-        </button>
+        {/* Main status at top */}
+        <Box sx={{ padding: 3, textAlign: 'center', flexShrink: 0 }}>
+          <div style={{fontSize: '36px', marginBottom: '10px'}}>⏳</div>
+          <div style={{fontSize: '18px', marginBottom: '10px', fontWeight: 'bold'}}>Loading Student App</div>
+          <div style={{fontSize: '14px', marginBottom: '15px', opacity: 0.9}}>
+            {initStatus}
+          </div>
+          <div style={{fontSize: '11px', opacity: 0.7, fontFamily: 'monospace'}}>
+            Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'} | {Capacitor.getPlatform()}
+          </div>
+        </Box>
+
+        {/* Console logs display */}
+        <Box sx={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          margin: '0 15px 15px 15px',
+          borderRadius: '8px',
+          padding: '10px',
+          overflow: 'auto',
+          fontFamily: 'monospace',
+          fontSize: '10px'
+        }}>
+          <div style={{marginBottom: '5px', opacity: 0.7, fontSize: '9px'}}>
+            📋 Console Output (last 10 messages):
+          </div>
+          {debugLogs.length === 0 ? (
+            <div style={{opacity: 0.5, fontSize: '9px'}}>Waiting for logs...</div>
+          ) : (
+            debugLogs.map((log, i) => (
+              <div
+                key={i}
+                style={{
+                  marginBottom: '3px',
+                  paddingBottom: '3px',
+                  borderBottom: '1px solid rgba(255,255,255,0.1)',
+                  color: log.level === 'error' ? '#ff6b6b' : log.level === 'warn' ? '#ffd93d' : 'white',
+                  wordBreak: 'break-word'
+                }}
+              >
+                <span style={{opacity: 0.6}}>[{log.timestamp}]</span> {log.message.substring(0, 200)}
+              </div>
+            ))
+          )}
+        </Box>
+
+        {/* Reload button at bottom */}
+        <Box sx={{ padding: '15px', textAlign: 'center', flexShrink: 0 }}>
+          <button
+            onClick={() => {
+              console.log('🔄 Force reload triggered');
+              window.location.reload();
+            }}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              border: '1px solid white',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            🔄 Reload App
+          </button>
+        </Box>
       </Box>
     );
   }
