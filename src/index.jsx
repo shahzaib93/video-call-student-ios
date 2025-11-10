@@ -16,6 +16,7 @@ function showStatus(msg) {
 // Expose React globally for iOS debugging
 window.React = React;
 window.ReactDOM = ReactDOM;
+window.TarteelApp = true;
 showStatus('✅ React imported and exposed globally');
 
 // Add error boundary for debugging - SHOW ERRORS ON SCREEN
