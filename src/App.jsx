@@ -728,23 +728,43 @@ function App() {
   if (!configReady || loading) {
     console.log('[StudentApp] Render branch', { configReady, loading, isAuthenticated, appError });
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
         height="100vh"
+        sx={{
+          backgroundColor: '#667eea',
+          color: 'white',
+          padding: 3,
+          textAlign: 'center',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 10000
+        }}
       >
-        Loading...
+        <div style={{fontSize: '24px', marginBottom: '20px'}}>⏳</div>
+        <div style={{fontSize: '18px', marginBottom: '10px'}}>Loading Student App...</div>
+        <div style={{fontSize: '12px', opacity: 0.8}}>
+          Config: {configReady ? '✅' : '⏳'} | Auth: {loading ? '⏳' : '✅'}
+        </div>
       </Box>
     );
   }
 
   if (!isAuthenticated) {
-    console.log('[StudentApp] Render branch', { configReady, loading, isAuthenticated, appError });
+    console.log('[StudentApp] Render branch - LOGIN SCREEN', { configReady, loading, isAuthenticated, appError });
+    console.log('🔓 Showing login page now');
     return (
       <ThemeProvider theme={modernTheme}>
         <CssBaseline />
-        <Login onLogin={handleLogin} />
+        <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+          <Login onLogin={handleLogin} />
+        </Box>
       </ThemeProvider>
     );
   }

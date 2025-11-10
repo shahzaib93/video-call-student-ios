@@ -102,59 +102,86 @@ function loadConfigFromCache() {
 }
 
 async function fetchConfigFromFirestore() {
-  const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOCUMENT);
-  const snapshot = await getDoc(docRef);
-  if (!snapshot.exists()) {
-    console.warn('App config document not found in Firestore, using defaults');
-    return null;
+  console.log('📡 Fetching app config from Firestore...');
+  try {
+    const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOCUMENT);
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore fetch timeout (10s)')), 10000)
+    );
+    const fetchPromise = getDoc(docRef);
+
+    const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (!snapshot.exists()) {
+      console.warn('⚠️ App config document not found in Firestore, using defaults');
+      return null;
+    }
+    const data = snapshot.data() || {};
+    console.log('✅ App config loaded from Firestore');
+    return {
+      ...data,
+      updatedAt: data.updatedAt || data.lastUpdated || null
+    };
+  } catch (error) {
+    console.error('❌ Failed to fetch app config from Firestore:', error);
+    throw error;
   }
-  const data = snapshot.data() || {};
-  return {
-    ...data,
-    updatedAt: data.updatedAt || data.lastUpdated || null
-  };
 }
 
 export const initializeAppConfig = async ({ listen = true } = {}) => {
   if (!loadPromise) {
     loadPromise = (async () => {
+      console.log('🔧 Initializing app config...');
       try {
         const firestoreConfig = await fetchConfigFromFirestore();
         if (firestoreConfig) {
+          console.log('✅ Using Firestore config');
           applyConfig(firestoreConfig);
         } else {
           const cached = loadConfigFromCache();
           if (cached) {
+            console.log('📦 Using cached config');
             applyConfig(cached);
           } else {
+            console.log('⚙️ Using default config');
             applyConfig(getDefaultEnvironmentConfig());
           }
         }
       } catch (error) {
-        console.error('Failed to load app config from Firestore:', error);
+        console.error('❌ Failed to load app config from Firestore:', error);
         const cached = loadConfigFromCache();
         if (cached) {
+          console.log('📦 Falling back to cached config');
           applyConfig(cached);
         } else {
+          console.log('⚙️ Falling back to default config');
           applyConfig(getDefaultEnvironmentConfig());
         }
       }
 
       if (listen && !unsubscribe) {
-        const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOCUMENT);
-        unsubscribe = onSnapshot(docRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data() || {};
-            applyConfig({
-              ...data,
-              updatedAt: data.updatedAt || data.lastUpdated || null
-            });
-          }
-        }, (error) => {
-          console.error('App config snapshot listener error:', error);
-        });
+        try {
+          const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOCUMENT);
+          unsubscribe = onSnapshot(docRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.data() || {};
+              console.log('🔄 App config updated from Firestore');
+              applyConfig({
+                ...data,
+                updatedAt: data.updatedAt || data.lastUpdated || null
+              });
+            }
+          }, (error) => {
+            console.error('❌ App config snapshot listener error:', error);
+          });
+          console.log('👂 Listening for app config changes');
+        } catch (error) {
+          console.error('❌ Failed to set up config listener:', error);
+        }
       }
 
+      console.log('✅ App config initialization complete');
       return currentConfig;
     })();
   }
