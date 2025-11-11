@@ -183,13 +183,13 @@ function App() {
     let authUnsubscribe = null;
 
     const init = async () => {
-      // Failsafe: Force loading to complete after 10 seconds
+      // Failsafe: Force loading to complete after 3 seconds
       const failsafeTimeout = setTimeout(() => {
         console.warn('⏰ Loading timeout - forcing to login screen');
         if (isMounted) {
           setLoading(false);
         }
-      }, 10000);
+      }, 3000);
 
       try {
         console.log('🔧 Initializing app config...');
