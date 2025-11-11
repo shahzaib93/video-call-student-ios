@@ -456,22 +456,41 @@ function App() {
       const authData = await response.json();
       console.log('✅ Firebase REST auth successful, UID:', authData.localId);
 
-      // Fetch user document from Firestore with timeout
-      console.log('📄 Fetching user document...');
-      const docPromise = getDoc(doc(db, 'users', authData.localId));
-      const docTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Firestore timeout - taking too long to fetch user data')), 10000)
-      );
+      // Fetch user document from Firestore using REST API (bypasses SDK issues on iOS)
+      console.log('📄 Fetching user document via Firestore REST API...');
 
-      const userDoc = await Promise.race([docPromise, docTimeout]);
-      console.log('✅ User document fetched');
+      const firestoreUrl = `https://firestore.googleapis.com/v1/projects/tarteel-quran/databases/(default)/documents/users/${authData.localId}`;
 
-      if (!userDoc.exists()) {
-        console.error('❌ User document not found');
+      const firestoreResponse = await fetch(firestoreUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authData.idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!firestoreResponse.ok) {
+        console.error('❌ Firestore REST API error:', firestoreResponse.status);
         throw new Error('User not found in database');
       }
 
-      const userData = userDoc.data();
+      const firestoreData = await firestoreResponse.json();
+      console.log('✅ User document fetched via REST API');
+
+      // Convert Firestore REST API response to usable data
+      const userData = {};
+      if (firestoreData.fields) {
+        for (const [key, value] of Object.entries(firestoreData.fields)) {
+          // Extract value from Firestore's typed format
+          if (value.stringValue !== undefined) userData[key] = value.stringValue;
+          else if (value.integerValue !== undefined) userData[key] = parseInt(value.integerValue);
+          else if (value.booleanValue !== undefined) userData[key] = value.booleanValue;
+          else if (value.timestampValue !== undefined) userData[key] = value.timestampValue;
+          else if (value.arrayValue !== undefined) userData[key] = value.arrayValue.values || [];
+        }
+      }
+
+      console.log('✅ User data parsed:', userData.username || 'unknown');
 
       if (userData.role !== 'student') {
         console.error('❌ User is not a student, role:', userData.role);
