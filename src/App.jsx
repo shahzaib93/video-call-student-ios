@@ -456,9 +456,14 @@ function App() {
       const authData = await response.json();
       console.log('✅ Firebase REST auth successful, UID:', authData.localId);
 
-      // Fetch user document from Firestore
+      // Fetch user document from Firestore with timeout
       console.log('📄 Fetching user document...');
-      const userDoc = await getDoc(doc(db, 'users', authData.localId));
+      const docPromise = getDoc(doc(db, 'users', authData.localId));
+      const docTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore timeout - taking too long to fetch user data')), 10000)
+      );
+
+      const userDoc = await Promise.race([docPromise, docTimeout]);
       console.log('✅ User document fetched');
 
       if (!userDoc.exists()) {
