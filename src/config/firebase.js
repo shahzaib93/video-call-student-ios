@@ -17,8 +17,14 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
-export const db = getFirestore(app);
+// Initialize Firebase services with experimental long polling for iOS
+import { initializeFirestore, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true, // Use HTTP long polling instead of WebSocket
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED
+});
+
 export const auth = getAuth(app);
 
 // For development, you might want to use emulators
