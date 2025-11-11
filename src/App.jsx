@@ -421,50 +421,62 @@ function App() {
     console.log('🔑 Login attempt started...');
 
     try {
-      // Set persistence to inMemory BEFORE login to avoid IndexedDB on iOS
-      console.log('⚙️ Setting auth persistence...');
-      const { setPersistence, inMemoryPersistence } = await import('firebase/auth');
-      await setPersistence(auth, inMemoryPersistence);
-      console.log('✅ Persistence set to inMemory');
+      // Use Firebase REST API instead of SDK - bypasses iOS WebView issues
+      console.log('🔐 Authenticating via Firebase REST API...');
 
-      // Add timeout to Firebase auth (30 seconds for mobile)
-      console.log('🔐 Signing in with Firebase...');
-      const authPromise = signInWithEmailAndPassword(auth, email, password);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Authentication timeout - please check your internet connection')), 30000)
+      const response = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyDrXbi2vqMua2jwvoEOsdEccUEGZAonIS4`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+            returnSecureToken: true
+          })
+        }
       );
 
-      const firebaseUser = await Promise.race([authPromise, timeoutPromise]);
-      console.log('✅ Firebase auth successful');
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('❌ Firebase REST API error:', error);
 
-      // Add timeout to Firestore fetch
+        let errorMessage = 'Login failed';
+        if (error.error?.message === 'EMAIL_NOT_FOUND') {
+          errorMessage = 'No account found with this email';
+        } else if (error.error?.message === 'INVALID_PASSWORD' || error.error?.message === 'INVALID_LOGIN_CREDENTIALS') {
+          errorMessage = 'Invalid email or password';
+        } else if (error.error?.message) {
+          errorMessage = error.error.message.replace(/_/g, ' ').toLowerCase();
+        }
+
+        return { success: false, error: errorMessage };
+      }
+
+      const authData = await response.json();
+      console.log('✅ Firebase REST auth successful, UID:', authData.localId);
+
+      // Fetch user document from Firestore
       console.log('📄 Fetching user document...');
-      const docPromise = getDoc(doc(db, 'users', firebaseUser.user.uid));
-      const docTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Firestore fetch timeout')), 10000)
-      );
-
-      const userDoc = await Promise.race([docPromise, docTimeoutPromise]);
+      const userDoc = await getDoc(doc(db, 'users', authData.localId));
       console.log('✅ User document fetched');
 
       if (!userDoc.exists()) {
         console.error('❌ User document not found');
-        await signOut(auth);
         throw new Error('User not found in database');
       }
 
       const userData = userDoc.data();
 
       if (userData.role !== 'student') {
-        console.error('❌ User is not a student');
-        await signOut(auth);
+        console.error('❌ User is not a student, role:', userData.role);
         throw new Error('Student access required');
       }
 
       const user = {
-        id: firebaseUser.user.uid,
-        email: firebaseUser.user.email,
-        username: userData.username || firebaseUser.user.displayName,
+        id: authData.localId,
+        email: authData.email,
+        username: userData.username || authData.displayName || email.split('@')[0],
         role: userData.role,
         ...userData
       };
@@ -472,6 +484,9 @@ function App() {
       console.log('👤 Setting user state:', user.username);
       setUser(user);
       setIsAuthenticated(true);
+
+      // Save token
+      tokenManager.saveToken(authData.idToken);
 
       // Do these async operations in background - don't block login
       setTimeout(async () => {
@@ -487,10 +502,6 @@ function App() {
           console.log('🟢 Setting user online...');
           UserService.setOnline();
           setTimeout(() => UserService.setupOnlineStatusTracking(), 1000);
-
-          console.log('🎫 Getting ID token...');
-          const idToken = await firebaseUser.user.getIdToken();
-          tokenManager.saveToken(idToken);
 
           console.log('🔔 Initializing push notifications...');
           try {
@@ -510,13 +521,7 @@ function App() {
       console.error('❌ Login error:', error);
 
       let errorMessage = 'Login failed';
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-        errorMessage = 'Invalid email or password';
-      } else if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email format';
-      } else if (error.message) {
+      if (error.message) {
         errorMessage = error.message;
       }
 
